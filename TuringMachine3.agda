@@ -380,12 +380,6 @@ halting-transition-theorem {n} {m} tm tape halts = proof
     steps-lemma2 : steps ≢ 0
     steps-lemma2 steps=0 = final-config≠start-config (steps-lemma1 steps=0)
 
-    {-
-    Nat-LEM : (n : Nat) → (n ≡ 0) ∨ (∃ m ∈ Nat , (n == suc m))
-    Nat-LEM 0 = inl refl
-    Nat-LEM (suc n) = inr (n , refl)
-    -}
-
     steps-lemma3 : (steps ≡ 0) ⊎ (Σ[ m ∈ Nat ] (steps ≡ suc m))
     steps-lemma3 = Nat-LEM steps
 
@@ -454,8 +448,8 @@ looping-transition-theorem tm tape = contrapositive (halting-transition-theorem 
 
 -- tm₃-1,1-1 loops on all inputs
 -- nice & easy proof, just listing cases.
-tm₃-1,1-1-loops : (tape : List (Fin 1)) → TM-loops tm-1,1-1 tape
-tm₃-1,1-1-loops tape = proof
+tm-1,1-1-loops : (tape : List (Fin 1)) → TM-loops tm-1,1-1 tape
+tm-1,1-1-loops tape = proof
   where
     -- show there's no halting condition by cases:
     sublemma1 :
@@ -470,9 +464,9 @@ tm₃-1,1-1-loops tape = proof
 
 
 -- tm₃-1,1-3 halts on all inputs
-tm₃-1,1-3-halts : (tape : List (Fin 1)) → TM-halts tm-1,1-3 tape
-tm₃-1,1-3-halts [] = 1 , refl
-tm₃-1,1-3-halts (zero ∷ xs) = 1 , proof
+tm-1,1-3-halts : (tape : List (Fin 1)) → TM-halts tm-1,1-3 tape
+tm-1,1-3-halts [] = 1 , refl
+tm-1,1-3-halts (zero ∷ xs) = 1 , proof
   where
     M = tm-1,1-3
     input = (zero ∷ xs)
@@ -664,7 +658,8 @@ tm-table-5,4-move-bit =
     L = false
 
 {-
-  shifts the first string of bits to the beginning of the tape
+  shifts the first string of bits to the beginning of the tape, ex:
+  bbbb1010bbb --> 1010bbbbbbb
 -}
 tm-table-10,5-move-bits : List (TM-δ 10 5)
 tm-table-10,5-move-bits =
@@ -710,3 +705,130 @@ tm-table-10,5-move-bits =
     
     R = true
     L = false
+
+
+-- at any step, it's either halted or it hasn't
+TM-step-LEM :
+  {n m : Nat} →
+  (tm : TM (suc n) m) →
+  (tape : List (Fin m)) →
+  (steps : Nat) →
+  let
+    halted = TM-state.halted (TM-run steps tm tape)
+  in
+    (halted ≡ true) ⊎ (halted ≡ false)
+TM-step-LEM tm tape steps = Bool-LEM (TM-state.halted (TM-run steps tm tape))
+
+{-
+-- probably can't prove this because Agda is constructive and the halting problem is undecidable
+TM-LEM :
+  {n m : Nat} →
+  (tm : TM (suc n) m) →
+  (tape : List (Fin m)) →
+  TM-halts tm tape ⊎ TM-loops tm tape
+TM-LEM tm tape = proof
+  where
+    proof
+
+-}
+
+
+-- derelativize by actually defining K
+record HaltingProblem : Set where
+  field
+    n : Nat
+    m : Nat
+    H : TM (suc n) (suc (suc m))
+    e₁ : {n' m' : Nat} → TM n' m' → List (Fin m') → List (Fin (suc (suc m)))
+    e₂ : {n' m' m'' : Nat} → TM n' m' → List (Fin m'')
+    H-semantics :
+      {n' m' : Nat} →
+      (M : TM (suc n') m') →
+      (i : List (Fin m')) →
+      Σ[ output ∈ List (Fin (suc (suc m))) ] (
+          (TM-outputs H (e₁ M i) output)
+        × ((output [ 0 ]? ≡ just zero) ⊎ (output [ 0 ]? ≡ just (suc zero)))
+        × ((output [ 0 ]? ≡ just (suc zero)) ↔ TM-halts M i)
+        × ((output [ 0 ]? ≡ just zero) ↔ TM-loops M i)
+      )
+    K : TM (suc n) (suc (suc m))
+    K-semantics :
+      {n' m' : Nat} →
+      (M : TM (suc n') m') →
+      ((Σ[ output ∈ List (Fin (suc (suc m))) ] (
+        (TM-outputs H (e₁ M (e₂ M)) output)
+        × (output [ 0 ]? ≡ just (suc zero))
+      )) ↔ TM-loops K (e₂ M))
+      × ((Σ[ output ∈ List (Fin (suc (suc m))) ] (
+        (TM-outputs H (e₁ M (e₂ M)) output)
+        × (output [ 0 ]? ≡ just zero)
+      )) ↔ TM-halts K (e₂ M))
+    
+
+HaltingProblem-undecidable : ¬ HaltingProblem
+HaltingProblem-undecidable R = proof
+  where
+    open HaltingProblem R
+
+    problem = K-semantics K
+
+    H-output : Σ[ output ∈ List (Fin (suc (suc m))) ] (
+          (TM-outputs H (e₁ K (e₂ K)) output)
+        × ((output [ 0 ]? ≡ just zero) ⊎ (output [ 0 ]? ≡ just (suc zero)))
+        × ((output [ 0 ]? ≡ just (suc zero)) ↔ TM-halts K (e₂ K))
+        × ((output [ 0 ]? ≡ just zero) ↔ TM-loops K (e₂ K))
+      )
+    H-output = H-semantics K (e₂ K)
+
+    H-output-tape : List (Fin (suc (suc m)))
+    H-output-tape = proj₁ H-output
+
+    H-outputs-output : TM-outputs H (e₁ K (e₂ K)) H-output-tape
+    H-outputs-output = proj₁ (proj₂ H-output)
+    
+    H-decided : (H-output-tape [ 0 ]? ≡ just zero) ⊎ (H-output-tape [ 0 ]? ≡ just (suc zero))
+    H-decided = proj₁ (proj₂ (proj₂ H-output))
+
+    K-halts-if-true : (H-output-tape [ 0 ]? ≡ just (suc zero)) → TM-halts K (e₂ K)
+    K-halts-if-true = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ H-output))))
+
+    K-loops-if-false : (H-output-tape [ 0 ]? ≡ just zero) → TM-loops K (e₂ K)
+    K-loops-if-false = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ H-output))))
+
+    K-loops-if-true :
+     Σ[ output ∈ List (Fin (suc (suc m))) ] (
+         (TM-outputs H (e₁ K (e₂ K)) output)
+       × (output [ 0 ]? ≡ just (suc zero))
+     ) → TM-loops K (e₂ K)
+    K-loops-if-true hyp = (proj₁ (proj₁ problem)) hyp
+
+    K-halts-if-false :
+     Σ[ output ∈ List (Fin (suc (suc m))) ] (
+         (TM-outputs H (e₁ K (e₂ K)) output)
+       × (output [ 0 ]? ≡ just zero)
+     ) → TM-halts K (e₂ K)
+    K-halts-if-false hyp = (proj₁ (proj₂ problem)) hyp
+
+    ¬output-false : ¬ (H-output-tape [ 0 ]? ≡ just zero)
+    ¬output-false hyp = K-loops K-halts
+      where
+        K-loops : TM-loops K (e₂ K)
+        K-loops = K-loops-if-false hyp
+
+        K-halts : TM-halts K (e₂ K)
+        K-halts = K-halts-if-false  (H-output-tape , (H-outputs-output  , hyp))
+
+    ¬output-true : ¬ (H-output-tape [ 0 ]? ≡ just (suc zero))
+    ¬output-true hyp = K-loops K-halts
+      where
+        K-loops : TM-loops K (e₂ K)
+        K-loops = K-loops-if-true (H-output-tape , (H-outputs-output , hyp))
+
+        K-halts : TM-halts K (e₂ K)
+        K-halts = K-halts-if-true hyp
+
+    ¬H-decided : ¬ ((H-output-tape [ 0 ]? ≡ just zero) ⊎ (H-output-tape [ 0 ]? ≡ just (suc zero)))
+    ¬H-decided (inj₁ hyp) = ¬output-false hyp
+    ¬H-decided (inj₂ hyp) = ¬output-true hyp
+
+    proof = ¬H-decided H-decided
