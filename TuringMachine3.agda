@@ -44,24 +44,9 @@ TM-apply-δ condition (just δ) = inj₁ (TM-apply-δ-just condition δ)
 
 TM-step : {n m : Nat} → TM n m → (Fin n) × ((List (Fin m)) × Nat) → ((Fin n) × ((List (Fin m)) × Nat)) ⊎ (List (Fin m))
 TM-step {n} {0} tm (state , ([] , pos)) = inj₁ (state , ([] , pos))
-TM-step {n} {suc m} tm condition = TM-apply-δ condition δ 
+TM-step {n} {suc m} tm condition@(state , (tape , pos)) = TM-apply-δ condition δ 
   where
-    state = proj₁ condition
-    tape = proj₁ (proj₂ condition)
-    pos = proj₂ (proj₂ condition)
     δ = tm (state , (get-default zero tape pos))
-    {-
-    get-results : Maybe ((Fin n) × ((Fin (suc m)) × Bool)) → ((Fin n) × ((List (Fin (suc m))) × Nat)) ∨ (List (Fin (suc m)))
-    get-results nothing = inr tape
-    get-results (just (new-state , (write , LR))) = inl (new-state , (new-tape , new-pos))
-      where
-        new-pos = if LR then (suc pos) else (pred pos)
-        new-tape =
-          if (pos ge (length tape)) then
-            (write ∷ tape)
-          else
-            (set tape pos write)
-    -}
 
 TM-apply-step : {n m : Nat} → TM-state n m → TM-δ-output n m → TM-state n m
 TM-apply-step {n} {m} s₁ (inj₁ (new-state , (new-tape , new-pos))) =
@@ -201,15 +186,11 @@ halting-transition-theorem3 :
   let
     state = proj₁ condition
     tape = proj₁ (proj₂ condition)
-    pos = proj₂ (proj₂ condition) 
+    pos = proj₂ (proj₂ condition)
   in
     (tm (state , (get-default zero tape pos))) ≡ nothing
-halting-transition-theorem3 {n} {m} tm condition (out-tape , output-condition) = proof
+halting-transition-theorem3 {n} {m} tm condition@(state , (tape , pos)) (out-tape , output-condition) = proof
   where
-    state = proj₁ condition
-    tape = proj₁ (proj₂ condition)
-    pos = proj₂ (proj₂ condition)
-    
     δ = tm (state , (get-default zero tape pos))
 
 

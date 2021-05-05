@@ -27,6 +27,6 @@ data μR : ℕ → Set where
 μR-interp (prim-rec f g) ((suc n) ∷ xs) y =
   Σ ℕ (λ r →
     (μR-interp (prim-rec f g) (n ∷ xs) r)
-    × (μR-interp g (n ∷ r ∷ xs) y)
+    × (μR-interp g (n ∷ r ∷ xs) y) -- termination checker has issues with this call
   )
 μR-interp (μ-rec f) xs y = min-Nat (λ n → μR-interp f (y ∷ xs) 0) y
