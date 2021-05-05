@@ -12,18 +12,15 @@ data μR : ℕ → Set where
   μ-rec : {k : ℕ} → μR (1 + k) → μR k
 
 
--- how to fix to make it pass the termination checker?
--- {-# NON_TERMINATING #-}
-
 μR-interp : {n : ℕ} → μR n → Vec ℕ n → ℕ → Set
 μR-interp zero _ y = y ≡ 0
 μR-interp succ (x ∷ []) y = y ≡ (1 + x)
 μR-interp (proj n i) xs y = y ≡ xs [ i ]
-μR-interp (comp {n} {k} f gs) xs y =
-  Σ[ v ∈ Vec ℕ k ] (
-    (foldr (λ _ → Set) _×_ ⊤ (map (λ (g , w) → (μR-interp g xs w)) (zip gs v)))
-    × (μR-interp f v y)
-  )
+μR-interp (comp {n} {k} f gs) xs y = Σ[ v ∈ Vec ℕ k ] ((fold' gs v) × (μR-interp f v y))
+  where
+    fold' : {k' : ℕ} → Vec (μR n) k' → Vec ℕ k' → Set
+    fold' [] [] = ⊤
+    fold' (g' ∷ gs') (y' ∷ ys') = (μR-interp g' xs y') × (fold' gs' ys')
 μR-interp (prim-rec f g) (0 ∷ xs) y = μR-interp f xs y
 μR-interp (prim-rec f g) ((suc n) ∷ xs) y =
   Σ[ r ∈ ℕ ] (

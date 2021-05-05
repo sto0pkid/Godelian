@@ -6,7 +6,17 @@ data Bin (A : Set) : Set where
   _∙_ : Bin A → Bin A → Bin A
   [_] : A → Bin A
 
--- this ensures the combinators are appropriately defined
+{-
+  this ensures the combinators are appropriately defined
+  Fin n represents the arguments to the combinator, rather than the carrier set
+    from which those arguments are taken
+  Bin (Fin n) represents the possible (bin-)trees you can construct from just the
+  arguments, i.e. the combinators restrict you to the following operations on the arguments
+    * rearrange
+    * repeat
+    * remove
+    * regroup
+-}
 Combinator : ℕ → Set
 Combinator n = Bin (Fin n)
 
@@ -46,4 +56,11 @@ W = ([ x ] ∙ [ y ]) ∙ [ y ]
   where
     x = zero
     y = suc zero
-  
+
+{-
+Combinatory completeness:
+* remove any unused arguments
+* repeat the remaining arguments as many times as they are used in the result
+* rearrange the arguments into their proper order
+* regroup them into their proper tree structure
+-}
