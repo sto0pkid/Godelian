@@ -13,7 +13,8 @@ data μR : ℕ → Set where
 
 
 -- how to fix to make it pass the termination checker?
-{-# NON_TERMINATING #-}
+-- {-# NON_TERMINATING #-}
+
 μR-interp : {n : ℕ} → μR n → Vec ℕ n → ℕ → Set
 μR-interp zero _ y = y ≡ 0
 μR-interp succ (x ∷ []) y = y ≡ (1 + x)
@@ -25,8 +26,8 @@ data μR : ℕ → Set where
   )
 μR-interp (prim-rec f g) (0 ∷ xs) y = μR-interp f xs y
 μR-interp (prim-rec f g) ((suc n) ∷ xs) y =
-  Σ ℕ (λ r →
-    (μR-interp (prim-rec f g) (n ∷ xs) r)
-    × (μR-interp g (n ∷ r ∷ xs) y) -- termination checker has issues with this call
+  Σ[ r ∈ ℕ ] (
+      (μR-interp (prim-rec f g) (n ∷ xs) r)
+    × (μR-interp g (n ∷ r ∷ xs) y)
   )
 μR-interp (μ-rec f) xs y = min-Nat (λ n → μR-interp f (y ∷ xs) 0) y
