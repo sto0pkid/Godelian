@@ -1,6 +1,6 @@
 module TuringMachine3 where
 
-open import Basic renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM)
+open import Basic hiding (raise) renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM ; Fin-raise' to raise)
 
 TM : (n m : Nat) → Set
 TM n m = (Fin n) × (Fin m) → Maybe ((Fin n) × ((Fin m) × Bool))
@@ -520,6 +520,7 @@ TM-get-δ {n} {m} M x y = Maybe-map extract (M (x , y))
     extract (x' , (y' , d)) = δ x y x' y' d
 
 
+{-
 TM-get-table-group : {n m : Nat} → TM (suc n) (suc m) → List (TM-δ (suc n) (suc m))
 TM-get-table-group {n} {m} M = subproof
   where
@@ -528,6 +529,7 @@ TM-get-table-group {n} {m} M = subproof
       Fin-filter (λ y →
         TM-get-δ M zero y
       ) (fromℕ m)
+-}
 
 TM-get-table-nested : {n m : Nat} → TM (suc n) (suc m) → List (List (TM-δ (suc n) (suc m)))
 TM-get-table-nested {n} {m} M = subproof
@@ -553,10 +555,6 @@ TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (List-find match
   where
     match-input : TM-δ (suc n) (suc m) → Bool
     match-input (δ x' y' _ _ _) = eq-∧ (eq-Fin {suc n}) (eq-Fin {suc m}) (x , y) (x' , y')
-
-{-
-Should compute 2n if n is odd, 2n+1 if n is even
--}
 
 tm-table-1,1-1 : List (TM-δ 1 1)
 tm-table-1,1-1 =
@@ -660,29 +658,49 @@ tm-table-5,4-move-bit =
 {-
   shifts the first string of bits to the beginning of the tape, ex:
   bbbb1010bbb --> 1010bbbbbbb
+  expects b in the first tape cell
+  expects the initial tape to only contain b, 0, and 1
+  expects there to actually be a bit string: it will loop on blank tape looking for it
 -}
 tm-table-10,5-move-bits : List (TM-δ 10 5)
 tm-table-10,5-move-bits =
+  -- mark the starting position
     (δ q₀ b  q₁ sₓ R)
+    
+  -- scan until a bit is found
   ∷ (δ q₁ b  q₁ b R)
   ∷ (δ q₁ s₀ q₂ s₀ R)
   ∷ (δ q₁ s₁ q₂ s₁ R)
+  
+  -- scan to the end of the bit string and mark the cell after the end
   ∷ (δ q₂ s₀ q₂ s₀ R)
   ∷ (δ q₂ s₁ q₂ s₁ R)
   ∷ (δ q₂ b  q₃ t  L)
+
+  -- scan back to immediately before the beginning of the bit string
   ∷ (δ q₃ s₀ q₃ s₀ L)
   ∷ (δ q₃ s₁ q₃ s₁ L)
   ∷ (δ q₃ b  q₄ b  R)
   ∷ (δ q₃ sₓ q₄ sₓ R)
+
+  -- scan forward to the beginning of the bit string, erase that bit
+  -- the bit is stored as the internal state: q₅ for 0, q₆ for 1
+  -- if it instead finds the ending marker then erase it
   ∷ (δ q₄ b  q₄ b R)
   ∷ (δ q₄ s₀ q₅ b L)
   ∷ (δ q₄ s₁ q₆ b L)
   ∷ (δ q₄ t  q₈ b L)
+
+  -- scan back to the marked starting position and replace the mark with the stored bit
   ∷ (δ q₅ b  q₅ b L)
   ∷ (δ q₅ sₓ q₇ s₀ R)
   ∷ (δ q₆ b  q₆ b L)
   ∷ (δ q₆ sₓ q₇ s₁ R)
+
+  -- write the starting mark in the next cell
   ∷ (δ q₇ b  q₄ sₓ R)
+
+  -- scan back to the beginning and erase the mark
   ∷ (δ q₈ b  q₈ b L)
   ∷ (δ q₈ sₓ q₈ b L)
   ∷ []
@@ -705,6 +723,142 @@ tm-table-10,5-move-bits =
     
     R = true
     L = false
+
+{-
+  copies the first string of bits to the cells immediately after it
+  bb1010bbbbbb --> bb1010b1010b
+
+  expects at least 2 b's at the beginning of the tape
+  expects the tape to only contain b, 0 and 1
+  expects there to actually be a bit string: it will loop on blank tape looking for it
+-}
+tm-table-21,6-copy-bits : List (TM-δ 21 6)
+tm-table-21,6-copy-bits =
+    -- mark the beginning of the tape
+    (δ q₀ b q₁ sₓ R)
+    
+    -- scan to the beginning of the bit string;
+  ∷ (δ q₁ b q₁ b R)
+  ∷ (δ q₁ s₀ q₂ s₀ L)
+  ∷ (δ q₁ s₁ q₂ s₁ L)
+
+    -- mark the cell immediately before the beginning of the bit string
+  ∷ (δ q₂ b  q₃  u R)
+
+    -- scan to the end of the bit string;
+    -- mark the cell immediately after it
+  ∷ (δ q₃ s₀ q₃ s₀ R)
+  ∷ (δ q₃ s₁ q₃ s₁ R)
+  ∷ (δ q₃ b  q₄ t  L)
+
+    -- check cell immediately preceding t; if u then done.
+  ∷ (δ q₄ s₀ q₅ s₀ L)
+  ∷ (δ q₄ s₁ q₆ s₁ L)
+  ∷ (δ q₄ u  q₁₇ u R)
+
+    -- scan back to the u mark
+    -- track last seen bit in internal state
+    -- when reaching u, replace it with the stored bit (0)
+  ∷ (δ q₅ s₀ q₅ s₀ L)
+  ∷ (δ q₅ s₁ q₆ s₁ L)
+  ∷ (δ q₅ u  q₈ s₀ R)
+
+    -- replace that stored bit with u
+  ∷ (δ q₈ s₀ q₉ u  R)
+
+    -- scan back to the end of the tape to add a 0 to the end
+  ∷ (δ q₉ s₀ q₉ s₀ R)
+  ∷ (δ q₉ s₁ q₉ s₁ R)
+  ∷ (δ q₉ t  q₉ t  R)
+  ∷ (δ q₉ b  q₁₀ s₀ L)
+
+    -- scan back to the u mark
+    -- track last seen bit in internal state
+    -- when reaching u, replace it with the stored bit (1)
+  ∷ (δ q₆ s₀ q₅ s₀ L)
+  ∷ (δ q₆ s₁ q₆ s₁ L)
+  ∷ (δ q₆ u  q₁₁ s₁ R)
+
+    -- replace that stored bit (1) with u
+  ∷ (δ q₁₁ s₁ q₁₂ u R)
+
+    -- scan back to the end of the tape to add a 1 to the end
+  ∷ (δ q₁₂ s₀ q₁₂ s₀ R)
+  ∷ (δ q₁₂ s₁ q₁₂ s₁ R)
+  ∷ (δ q₁₂ t  q₁₂ t  R)
+  ∷ (δ q₁₂ b  q₁₀ s₁ L)
+
+    -- scan back to the t mark
+  ∷ (δ q₁₀ s₀ q₁₀ s₀ L)
+  ∷ (δ q₁₀ s₁ q₁₀ s₁ L)
+  ∷ (δ q₁₀ t  q₄  t  L)
+
+    -- shift the original back into position and erase the t, sₓ and u
+  ∷ (δ q₁₃ s₀ q₁₄ u R)
+  ∷ (δ q₁₃ s₁ q₁₅ u R)
+  ∷ (δ q₁₃ b  q₁₈ b R)
+  ∷ (δ q₁₃ sₓ q₁₈ sₓ R)
+  ∷ (δ q₁₄ u  q₁₆ s₀ L)
+  ∷ (δ q₁₅ u  q₁₆ s₁ L)
+  ∷ (δ q₁₆ u  q₁₃ u L)
+  
+    -- erase the t
+  ∷ (δ q₁₇ t  q₁₇ b L)
+  ∷ (δ q₁₇ u  q₁₃ u L)
+  ∷ (δ q₁₈ u  q₁₉ b L)
+  ∷ (δ q₁₉ b  q₁₉ b L)
+  
+    -- erase the sₓ and halt
+  ∷ (δ q₁₉ sₓ q₂₀ b L)
+  ∷ []
+  where
+    q₀ = raise 20 (fromℕ 0)
+    q₁ = raise 19 (fromℕ 1)
+    q₂ = raise 18 (fromℕ 2)
+    q₃ = raise 17 (fromℕ 3)
+    q₄ = raise 16 (fromℕ 4)
+    q₅ = raise 15 (fromℕ 5)
+    q₆ = raise 14 (fromℕ 6)
+    q₇ = raise 13 (fromℕ 7)
+    q₈ = raise 12  (fromℕ 8)
+    q₉ = raise 11  (fromℕ 9)
+    q₁₀ = raise 10 (fromℕ 10)
+    q₁₁ = raise 9 (fromℕ 11)
+    q₁₂ = raise 8 (fromℕ 12)
+    q₁₃ = raise 7 (fromℕ 13)
+    q₁₄ = raise 6 (fromℕ 14)
+    q₁₅ = raise 5 (fromℕ 15)
+    q₁₆ = raise 4 (fromℕ 16)
+    q₁₇ = raise 3 (fromℕ 17)
+    q₁₈ = raise 2 (fromℕ 18)
+    q₁₉ = raise 1 (fromℕ 19)
+    q₂₀ = raise 0 (fromℕ 20)
+    
+    
+    b = zero
+    s₀ = suc zero
+    s₁ = suc (suc zero)
+    sₓ = suc (suc (suc zero))
+    t = suc (suc (suc (suc zero)))
+    u = suc (suc (suc (suc (suc zero))))
+    
+    R = true
+    L = false
+
+
+tm-table-21,6-copy-bits-unit :
+  let
+    b = zero
+    s₀ = suc zero
+    s₁ = suc (suc zero)
+  in
+    TM-state.tape (
+      TM-run 100
+      (TM-from-table tm-table-21,6-copy-bits)
+      (s₁ ∷ s₀ ∷ s₁ ∷ s₀ ∷ b ∷ b ∷ b ∷ [])
+    )
+    ≡ (s₁ ∷ s₀ ∷ s₁ ∷ s₀ ∷ b ∷ s₁ ∷ s₀ ∷ s₁ ∷ s₀ ∷ b ∷ b ∷ b ∷ [])
+tm-table-21,6-copy-bits-unit = refl
 
 
 -- at any step, it's either halted or it hasn't
@@ -732,8 +886,26 @@ TM-LEM tm tape = proof
 
 -}
 
+¬¬TM-LEM :
+  {n m : Nat} →
+  (tm : TM (suc n) m) →
+  (tape : List (Fin m)) →
+  ¬ (¬ (TM-halts tm tape ⊎ TM-loops tm tape))
+¬¬TM-LEM {n} {m} tm tape ¬TM-LEM = ¬¬halts ¬halts
+  where
+    ¬halts : ¬ (TM-halts tm tape)
+    ¬halts halts = ¬TM-LEM (inj₁ halts)
 
--- derelativize by actually defining K
+    ¬¬halts : ¬ (¬ (TM-halts tm tape))
+    ¬¬halts ¬halts = ¬TM-LEM (inj₂ ¬halts)
+
+{-
+derelativize by actually defining K:
+ * Given 3 Turing machine M and input i, run M on input i,
+   if it ever halts with output 0, halt
+   if it ever halts with output 1, loop
+need a UTM for such a construction, but there are possibly other constructions
+-}
 record HaltingProblem : Set where
   field
     n : Nat
@@ -832,3 +1004,293 @@ HaltingProblem-undecidable R = proof
     ¬H-decided (inj₂ hyp) = ¬output-true hyp
 
     proof = ¬H-decided H-decided
+
+
+
+TM-raise : {n m : Nat} → (n' : Nat) → TM n m → TM (n' + n) m
+TM-raise {n} {m} n' M (q , s) = 
+  (dite
+    {λ b → Maybe ((Fin (n' + n) × (Fin m × Bool)))}
+    ((toℕ q) lt n)
+    (λ case-true →
+      fix (M (fromℕ< (lt→< case-true) , s))
+    )
+    (λ _ → nothing))
+  where
+    fix : Maybe (Fin n × (Fin m × Bool)) → Maybe (Fin (n' + n) × (Fin m × Bool))
+    fix nothing = nothing
+    fix (just (q' , (s' , d))) = just ((raise n' q') , (s' , d))
+
+
+TM-raise+ : {n m : Nat} → (n' : Nat) → TM n m → TM (n' + n) m
+TM-raise+ {0} {m} 0 M (() , s)
+TM-raise+ {0} {m} (suc n') M (q , s) = nothing
+TM-raise+ {suc n} {m} 0 M (q , s)  = M (q , s)
+TM-raise+ {suc n} {m} (suc n') M (q , s) = output
+  where
+    qₙ' : (Fin (((1 + n') + (1 + n)) - (1 + n')))
+    qₙ' = Fin-sub q (1 + n') (m<m+1+n (1 + n') n)
+
+    qₙ : Fin (1 + n)
+    qₙ = coerce (cong (λ x → Fin x) (x+y-x=y (1 + n') (1 + n))) qₙ'
+    
+    M-out : Maybe (Fin (1 + n) × (Fin m × Bool))
+    M-out = M (qₙ , s)
+    
+    get-results : Maybe (Fin (1 + n) × (Fin m × Bool)) → Maybe (Fin ((1 + n') + (1 + n)) × (Fin m × Bool))
+    get-results nothing = nothing
+    get-results (just (q' , (s' , d))) = just ((raise (suc n') q') , (s' , d))
+    
+    output = get-results M-out
+
+seq : {n n' m : Nat} → (M₁ : TM n m) → (M₂ : TM (1 + n') m) → TM ((1 + n') + n) m
+seq {n} {n'} {m} M₁ M₂ = M₁,₂
+  where
+    fix-M₁ : TM (1 + n' + n) m
+    fix-M₁ = TM-raise (1 + n') M₁
+
+    fix-M₂ : TM (1 + n' + n) m
+    fix-M₂ = coerce (cong (λ x → TM x m) (+-comm n (1 + n'))) (TM-raise+ n M₂)
+
+    switch : Fin m → Maybe (Fin (1 + n' + n) × Fin m × Bool) → Fin (1 + n' + n) × Fin m × Bool
+    switch s nothing = (fromℕ< (m<1+n+m n n')) , (s , true)
+    switch s (just output) = output
+
+    M₁,₂ : TM (1 + n' + n) m
+    M₁,₂ (q , s) =
+      if (Fin-lt q n) then
+        just (switch s (fix-M₁ (q , s)))
+      else
+        fix-M₂ (q , s)
+
+-- it sequences but the copy machine itself doesn't play nice with sequencing
+tm-double-copy : TM 42 6
+tm-double-copy = seq tm tm
+  where
+    tm = (TM-from-table tm-table-21,6-copy-bits)
+
+tm-double-copy-output : List Nat
+tm-double-copy-output =
+  map toℕ (TM-state.tape (
+    TM-run 80
+    tm-double-copy
+    (s₁ ∷ s₀ ∷ s₁ ∷ s₀ ∷ b ∷ b ∷ b ∷ [])
+  ))
+  where
+    b = zero
+    s₀ = suc zero
+    s₁ = suc (suc zero)
+
+
+K-helper : List (TM-δ 3 3)
+K-helper =
+  -- if 0, halt immediately
+    (δ q₀ s₀ q₂ s₀ L)
+  -- if 1, loop forever
+  ∷ (δ q₀ s₁ q₁ s₁ R)
+  ∷ (δ q₁ b  q₁ b  R)
+  ∷ (δ q₁ s₀ q₁ s₀ R)
+  ∷ (δ q₁ s₁ q₁ s₁ R)
+  ∷ []
+  where
+    q₀ = zero
+    q₁ = suc zero
+    q₂ = suc (suc zero)
+    
+    b = zero
+    s₀ = suc zero
+    s₁ = suc (suc zero)
+
+    L = false
+    R = true
+
+
+K-helper-halts-on-0 :
+  let
+    s₀ = suc zero
+  in
+    TM-halts (TM-from-table K-helper) (s₀ ∷ [])
+K-helper-halts-on-0 = 2 , refl
+
+K-helper-loops-on-1 :
+  let
+    s₁ = suc (suc zero)
+  in
+    TM-loops (TM-from-table K-helper) (s₁ ∷ [])
+K-helper-loops-on-1 (0 , ())
+K-helper-loops-on-1 ((suc steps) , halted) = proof
+  where
+    q₁ = suc zero
+
+    s₁ = suc (suc zero)
+
+    R = true
+ 
+    K = (TM-from-table K-helper)
+
+    tape = (s₁ ∷ [])
+
+    lemma1 : (s : Fin 3) → K (q₁ , s) ≡ just (q₁ , (s , R)) 
+    lemma1 zero = refl
+    lemma1 (suc zero) = refl
+    lemma1 (suc (suc zero)) = refl
+
+    lemma2 : (n : Nat) → TM-state.state (TM-run n K tape) ≡ q₁ → (TM-state.state (TM-run (suc n) K tape) ≡ q₁) × (TM-state.halted (TM-run (suc n) K tape) ≡ false)
+    lemma2 n hyp = subproof
+      where
+        config = TM-run n K tape
+        q = TM-state.state config
+        t = TM-state.tape config
+        p = TM-state.pos config
+        s = (get-default zero t p)
+        condition = (q , (t , p))
+
+        sublemma1a : fold (TM-start-state K tape) (TM-step-state K) n ≡ TM-run n K tape
+        sublemma1a = refl
+
+        sublemma1 : (TM-run (suc n) K tape) ≡ (TM-step-state K (TM-run n K tape))
+        sublemma1 = cong (λ state → TM-step-state K state) sublemma1a
+
+        sublemma2 :
+            (TM-step-state K (TM-run n K tape)) ≡
+            (TM-apply-step config (TM-step K condition))
+        sublemma2 = refl
+
+        sublemma3 :
+            (TM-step K condition) ≡
+            (TM-apply-δ condition (K (q , s)))
+        sublemma3 = refl
+
+        sublemma4 :
+            (K (q , s)) ≡ 
+            (K (q₁ , s))
+        sublemma4 = cong (λ x → K (x , s)) hyp
+        
+        sublemma5 :
+            (K (q₁ , s)) ≡
+            (just (q₁ , (s , R)))
+        sublemma5 = lemma1 s
+        
+        sublemma6 :
+          (TM-apply-δ condition (K (q , s))) ≡
+          (TM-apply-δ condition (just (q₁ , (s , R))))
+        sublemma6 = cong (λ x → TM-apply-δ condition x) (≡-trans sublemma4 sublemma5)
+
+        sublemma7 :
+          (TM-apply-δ condition (just (q₁ , (s , R)))) ≡
+          (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+        sublemma7 = refl
+
+        sublemma8 :
+          (TM-step K condition) ≡
+          (TM-apply-δ condition (just (q₁ , (s , R))))
+        sublemma8 = ≡-trans sublemma3 sublemma6
+
+        sublemma9 :
+          (TM-step K condition) ≡
+          (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+        sublemma9 = ≡-trans sublemma8 sublemma7
+
+        sublemma10 :
+           (TM-apply-step config (TM-step K condition)) ≡
+           (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+        sublemma10 = cong (λ x → TM-apply-step config x) sublemma9
+
+        sublemma11 :
+          TM-state.state (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+          ≡ (proj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+        sublemma11 = refl
+
+        sublemma12 :
+          (proj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+          ≡ q₁
+        sublemma12 = refl
+
+        sublemma13 :
+          (TM-run (suc n) K tape) ≡ 
+          (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+        sublemma13 = (≡-trans sublemma1 (≡-trans sublemma2 sublemma10))
+        
+        sublemma14 :
+          TM-state.state (TM-run (suc n) K tape) ≡
+          TM-state.state (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+        sublemma14 = cong (λ x → TM-state.state x) sublemma13
+      
+        sublemma15 :
+          TM-state.state (TM-run (suc n) K tape) ≡
+          q₁
+        sublemma15 = ≡-trans sublemma14 (≡-trans sublemma11 sublemma12)
+
+        sublemma16 :
+          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))) ≡ false
+        sublemma16 = refl
+
+        sublemma17 :
+          TM-state.halted (TM-run (suc n) K tape) ≡
+          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+        sublemma17 = cong (λ x → TM-state.halted x) sublemma13
+
+        sublemma18 :
+          TM-state.halted (TM-run (suc n) K tape) ≡
+          false
+        sublemma18 = ≡-trans sublemma17 sublemma16
+        subproof = sublemma15 , sublemma18
+        
+    lemma3 : (n : Nat) → (TM-state.state (TM-run (suc n) K (s₁ ∷ [])) ≡ q₁) × (TM-state.halted (TM-run (suc n) K (s₁ ∷ [])) ≡ false)
+    lemma3 0 = refl , refl
+    lemma3 (suc n) = subproof
+      where
+        prev-state-is-q₁ : TM-state.state (TM-run (suc n) K (s₁ ∷ [])) ≡ q₁
+        prev-state-is-q₁ = proj₁ (lemma3 n)
+        
+        subproof = lemma2 (suc n) prev-state-is-q₁
+
+    true=false : true ≡ false
+    true=false = ≡-trans (≡-sym halted) (proj₂ (lemma3 steps))
+
+    proof = true≠false true=false
+
+-- move left one cell and halt
+TM-L : {n : Nat} → TM 2 n
+TM-L (zero , x) = just (suc zero , (x , false))
+TM-L (suc zero , x) = nothing
+
+-- move right one cell and halt
+TM-R : {n : Nat} → TM 2 n
+TM-R (zero , x) = just (suc zero , (x , true))
+TM-R (suc zero , _) = nothing
+
+-- write a given symbol, move right, then move back and halt
+TM-a : {n : Nat} → (s : Fin n) → TM 3 n
+TM-a s (zero , x) = just (suc zero , (s , true))
+TM-a s (suc zero , x) = just (suc (suc zero) , (x , false))
+TM-a s (suc (suc zero) , _) = nothing
+
+TM-2L : {n : Nat} → TM 3 n
+TM-2L (zero , x) = just (suc zero , (x , false))
+TM-2L (suc zero , x) = just (suc (suc zero) , (x , false))
+TM-2L (suc (suc zero) , _) = nothing
+
+TM-seq2 : TM 8 2
+TM-seq2 = seq (TM-a s₁) (seq TM-L (TM-a s₁))
+  where
+    s₁ = suc zero
+
+TM-seq2-output : List (Fin 2)
+TM-seq2-output = TM-state.tape (TM-run 4 TM-seq2 [])
+
+TM-seq2-trace : List (Nat × List (Fin 2))
+TM-seq2-trace = map (λ x → TM-state.pos x , TM-state.tape x) (map (λ x → TM-run x TM-seq2 []) (range 10))
+
+TM-seq2-table : List (TM-δ 8 2)
+TM-seq2-table = TM-to-table TM-seq2
+
+{-
+TM-seq2-unit :
+  let
+    s₀ = zero
+    s₁ = suc zero
+  in
+    TM-state.tape (TM-run 10 TM-seq2 []) ≡ (s₁ ∷ s₀ ∷ s₁ ∷ s₀ ∷ [])
+TM-seq2-unit = refl
+-}

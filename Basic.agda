@@ -3,11 +3,11 @@ module Basic where
 open import Agda.Primitive public
 open import Data.Bool public using (Bool ; true ; false ; not ; _∧_ ; _∨_ ; _xor_ ; if_then_else_)
 open import Data.Empty public using (⊥ ; ⊥-elim)
-open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; raise)
+open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ< ; raise)
 open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
-open import Data.Maybe public using (Maybe ; nothing ; just ) renaming (map to Maybe-map)
-open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_≤ᵇ_ to _le_ ; _<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; <-irrefl ; n≤1+n ; m<n⇒m≤1+n)
+open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
+open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; <-irrefl ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -51,11 +51,17 @@ _≥'_ : ℕ → ℕ → Set
 x ≥' y = (x ≡ y) ⊎ (x > y)
 
 
+_le_ : ℕ → ℕ → Bool
+0 le y = true
+(suc x) le 0 = false
+(suc x) le (suc y) = x le y
+
 _ge_ : ℕ → ℕ → Bool
 x ge y = y le x
 
 _gt_ : ℕ → ℕ → Bool
 x gt y = y lt x
+
 
 
 Bool→Nat : Bool → ℕ
@@ -208,11 +214,22 @@ Nat-Map-list f n = map f (range n)
 Nat-filter : {A : Set} → (ℕ → Maybe A) → ℕ → List A
 Nat-filter f n = filter f (range n)
 
+Fin-raise : {n : ℕ} → Fin n → Fin (suc n)
+Fin-raise {0} ()
+Fin-raise {suc n} zero = zero
+Fin-raise {suc n} (suc x) = suc (Fin-raise x)
+
+Fin-raise' : {n : ℕ} → (m : ℕ) → Fin n → Fin (m + n)
+Fin-raise' {0} _ ()
+Fin-raise' {suc n} 0 x = x
+Fin-raise' {suc n} (suc m) x = Fin-raise (Fin-raise' m x)
+
+
 
 Fin-fold : {A :  Set} {n : ℕ} → (Fin n → A → A) → A → Fin n → A
 Fin-fold {A} {0} f z ()
 Fin-fold {A} {suc n} f z zero = f zero z
-Fin-fold {A} {suc n} f z (suc m) = f (suc m) (Fin-fold (f ∘ (raise 1)) z m) 
+Fin-fold {A} {suc n} f z (suc m) = f (suc m) (Fin-fold (f ∘ (Fin-raise' 1)) z m) 
 
 Fin-map-list : {A : Set} {n : ℕ} → (Fin n → A) → Fin n → List A
 Fin-map-list {A} {n} f m = Fin-fold (_∷_ ∘ f) [] m
@@ -327,4 +344,52 @@ Vec-sum : {n : ℕ} → Vec ℕ n → ℕ
 Vec-sum v = Vec-foldr _+_ 0 v
 
 min-Nat : (ℕ → Set) → ℕ → Set
-min-Nat P n = (P n) × ((m : ℕ) → P m → m ≤ n)
+min-Nat P n = (P n) × ((m : ℕ) → P m → n ≤ m)
+
+
+
+demorgan-∨ : {A B : Set} → ¬ (A ⊎ B) → (¬ A) × (¬ B)
+demorgan-∨ ¬[A∨B] = (λ a → ¬[A∨B] (inj₁ a)) , (λ b → ¬[A∨B] (inj₂ b))
+
+m<1+n+m : (m n : ℕ) → m < (1 + n) + m
+m<1+n+m m n = m<n+m m (s≤s z≤n)
+
+m<m+1+n : (m n : ℕ) → m < m + (1 + n)
+m<m+1+n m n = m<m+n m (s≤s z≤n)
+
+Fin-lt : {n : ℕ} → Fin n → ℕ → Bool
+Fin-lt {0} ()
+Fin-lt {suc n} f 0 = false
+Fin-lt {suc n} zero (suc m) = true
+Fin-lt {suc n} (suc f) (suc m) = Fin-lt f m
+
+
+x+y-x=y : (x y : ℕ) → (x + y) - x ≡ y
+x+y-x=y 0 y = refl
+x+y-x=y (suc x) y = x+y-x=y x y
+
+dite : {A : Bool → Set} → (b : Bool) → ((b ≡ true) → A true) → ((b ≡ false) → A false) → A b
+dite true case-true _ = case-true refl
+dite false _ case-false = case-false refl
+
+le→≤ : {m n : ℕ} → (m le n) ≡ true → m ≤ n
+le→≤ {0} {n} hyp = z≤n
+le→≤ {suc m} {0} ()
+le→≤ {suc m} {suc n} hyp = s≤s (le→≤ {m} {n} hyp)
+
+lt→< : {m n : ℕ} → (m lt n) ≡ true → m < n
+lt→< {m} {0} ()
+lt→< {0} {suc n} hyp = s≤s (z≤n)
+lt→< {suc m} {suc n} hyp = s≤s (lt→< {m} {n} hyp)
+
+Fin-pred : {n : ℕ} → Fin (suc (suc n)) → Fin (suc n)
+Fin-pred zero = zero
+Fin-pred (suc f) = f
+
+Fin-sub : {n : ℕ} → Fin n → (m : ℕ) → m < n → Fin (n - m)
+Fin-sub {0} ()
+Fin-sub {1} zero 0 (s≤s z≤n) = zero
+Fin-sub {1} zero (suc m) (s≤s ())
+Fin-sub {suc (suc n)} f 0 hyp = f
+Fin-sub {suc (suc n)} zero (suc m) (s≤s m<1+n) = Fin-sub zero m m<1+n
+Fin-sub {suc (suc n)} (suc f) (suc m) (s≤s m<1+n) = Fin-sub f m m<1+n
