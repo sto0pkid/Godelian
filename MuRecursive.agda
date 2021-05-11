@@ -292,33 +292,6 @@ Can use this to prove that not every μ-recursive function is semantically primi
 μR-K-helper-loops-on-1 : ¬ (μR-halting (1 , (μR-K-helper , (1 ∷ []))))
 μR-K-helper-loops-on-1 (y , f[1]≡y) = μR-loop-example2-loops (1 ∷ (proj₁ f[1]≡y) ∷ []) (y , (proj₂ (proj₂ f[1]≡y)))
 
-{-
-{- 
-  problem: e : μR 1 × Vec ℕ 1 → ℕ
-  but how to get a Vec ℕ 1 from K ?
-  need H (e (K , e₂ K))
-  where does the e₂ come from ?
-  could do... e (K , []) ? but [] : Vec ℕ 0 not Vec ℕ 1
-  could do... e (K , (0 ∷ [])) ?
-
-  this is tricky... K needs to actually do the calling somehow...
--}
-μR-halting-undecidable : μR-undecidable μR-halting
-μR-halting-undecidable dec@(e , (e-bij , (H , (H-complete , H-sound)))) = proof
-  where
-    K : μR 1
-    K = comp μR-K-helper (H ∷ [])
-
-    K = comp μR-K-helper (comp H (e ∷ []) ∷ [])
-
-    K P = comp μR-K-helper (comp H ∷ []) (e (P , (e (P , (0 ∷ [])))))
-    K K = comp μR-K-helper (comp H ∷ []) (e (K , (e (K , (0 ∷ [])))))
-    
-    μR-K-helper (H (e₂ (P , e₁ P)))
-    μR-K-helper (H (e₂ (P , e₁ 
-
-    proof
--}
 
 μR-functional-vec : {n k : ℕ} → (gs : Vec (μR n) k) → (xs : Vec ℕ n) → (v₁ v₂ : Vec ℕ k) → fold' gs v₁ xs → fold' gs v₂ xs → v₁ ≡ v₂
 μR-functional-vec {n} {0} [] _ [] [] unit unit = refl
@@ -459,17 +432,6 @@ Can use this to prove that not every μ-recursive function is semantically primi
         sublemma3 : μR-interp K (e K ∷ []) 0
         sublemma3 = subsubproof
           where
-            -- μR-interp K (e K ∷ []) 0
-            -- μR-interp (comp μR-K-helper (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ [])) (e K ∷ []) 0
-            -- Σ[ v ∈ Vec ℕ 1 ] (fold' (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) v (e K ∷ []) × (μR-interp μR-K-helper v 0))
-            
-            -- fold' (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) v (e K ∷ [])
-            -- μR-interp (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ [])) (e K ∷ []) (head v)
-            -- Σ[ v₂ ∈ Vec ℕ 2 ] (fold' ((proj 1 zero) ∷ (proj 1 zero) ∷ []) v₂ (e K ∷ []) × (μR-interp H v₂ (head v)))
-            
-            -- fold' ((proj 1 zero) ∷ (proj 1 zero) ∷ []) v₂ (e K ∷ [])
-            -- fold' ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ((e K) ∷ (e K) ∷ []) (e K ∷ [])
-            
             v₂ : Vec ℕ 2
             v₂ = ((e K) ∷ (e K) ∷ [])
             
