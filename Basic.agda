@@ -7,7 +7,7 @@ open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ<
 open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
 open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; <-irrefl ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -23,7 +23,7 @@ open import Relation.Nullary public using (¬_)
 contrapositive : {A B : Set} → (A → B) → (¬ B → ¬ A)
 contrapositive f ¬B a = ¬B (f a)
 
-_↔_ : Set → Set → Set
+_↔_ : {i j : Level} → Set i → Set j → Set (i ⊔ j)
 A ↔ B = (A → B) × (B → A)
 
 _and_ : Bool → Bool → Bool
@@ -263,13 +263,13 @@ List-find : {A : Set} (P : A → Bool) → List A → Maybe A
 List-find {A} P [] = nothing
 List-find {A} P (x ∷ xs) = if (P x) then (just x) else (List-find P xs)
 
-Injective : {A B : Set} → (A → B) → Set
-Injective {A} {B} f = {x y : A} → (f x) ≡ (f y) → x ≡ y
+Injective : {i j : Level} {A : Set i} {B : Set j} → (A → B) → Set (i ⊔ j)
+Injective {i} {j} {A} {B} f = {x y : A} → (f x) ≡ (f y) → x ≡ y
 
-Surjective : {A B : Set} → (A → B) → Set
-Surjective {A} {B} f = (y : B) → Σ[ x ∈ A ] ((f x) ≡ y)
+Surjective : {i j : Level} {A : Set i} {B : Set j} → (A → B) → Set (i ⊔ j)
+Surjective {i} {j} {A} {B} f = (y : B) → Σ[ x ∈ A ] ((f x) ≡ y)
 
-Bijective : {A B : Set} → (A → B) → Set
+Bijective : {i j : Level} {A : Set i} {B : Set j} → (A → B) → Set (i ⊔ j)
 Bijective f = Injective f × Surjective f
 
 Finite : (A : Set) → Set
@@ -346,6 +346,16 @@ Vec-sum v = Vec-foldr _+_ 0 v
 min-Nat : (ℕ → Set) → ℕ → Set
 min-Nat P n = (P n) × ((m : ℕ) → P m → n ≤ m)
 
+min-Nat-unique : (P : ℕ → Set) → {x y : ℕ} → min-Nat P x → min-Nat P y → x ≡ y
+min-Nat-unique P {x} {y} (Px , hyp-x) (Py , hyp-y) = proof
+  where
+    x≤y : x ≤ y
+    x≤y = hyp-x y Py
+
+    y≤x : y ≤ x
+    y≤x = hyp-y x Px
+    
+    proof = ≤-antisym x≤y y≤x
 
 
 demorgan-∨ : {A B : Set} → ¬ (A ⊎ B) → (¬ A) × (¬ B)

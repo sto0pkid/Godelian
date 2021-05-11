@@ -81,6 +81,9 @@ model {n} T p = I A objs rels T
 _⊨_ : {n : ℕ} (T : FOL n) → (ϕ : FOL n) → Set₁
 _⊨_ {n} T ϕ =  (p : PreInterpretation {n}) → (model {n} T p) → (model {n} ϕ p)
 
+Th : {n : ℕ} → (T : FOL n) → (ϕ : FOL n) → Set₁
+Th = _⊨_
+
 ϕ₁ : FOL 1
 ϕ₁ = (0 R 1) & (1 R 2)
   where
