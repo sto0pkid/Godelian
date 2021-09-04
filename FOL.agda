@@ -2,16 +2,16 @@ module FOL where
 
 open import Basic hiding (all)
 
-{-
- n is the number of binary relation symbols
--}
-
 data Var : Set where
   v : ℕ → Var
 
 data Term : Set where
   c : ℕ → Term
   v : Var → Term
+
+{-
+ n is the number of binary relation symbols
+-}
 
 data FOL (n : ℕ) : Set where
   empty : FOL n -- equivalent to True
