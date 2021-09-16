@@ -19,7 +19,8 @@ Vec-ext2 (x ∷ xs) = refl
 Vec-empty : {i : Level} {A : Set i} → (xs : Vec A 0) → xs ≡ []
 Vec-empty [] = refl
 
-
+Vec1-ext : {i : Level} {A : Set i} → (xs : Vec A 1) → xs ≡ ((head xs) ∷ [])
+Vec1-ext (x ∷ []) = refl
 
 {-
 These are all more general
@@ -78,7 +79,11 @@ data μR : ℕ → Set where
 
 _[_]=_ : {n : ℕ} → μR n → Vec ℕ n → ℕ → Set
 
+
 fold[_,_]=_ : {n k : ℕ} → Vec (μR n) k → Vec ℕ n → Vec ℕ k → Set
+{-
+fold[ gs , xs ]= v = = Vec-map (λ g → 
+-}
 fold[ [] , _ ]= [] = ⊤
 fold[ (g ∷ gs) , xs ]= (y ∷ ys) = (g [ xs ]= y) × (fold[ gs , xs ]= ys)
 
@@ -103,54 +108,21 @@ succ                [ xs             ]= y = y ≡ (1 + (head xs))
 
 
 
-
-μR-Functional : {n : ℕ} → μR n → Set
-μR-Functional f = Functional (μR-interp f)
-
-
-
 {-
  Proof that the μ-recursive functions are actually functions
 -}
-μR-functional : ∀ { n } (f : μR n) → μR-Functional f
+μR-functional : ∀ { n } (f : μR n) → Functional (μR-interp f)
 
-fold'-lemma : {n k : ℕ} → (gs : Vec (μR n) k) → (v₁ v₂ : Vec ℕ k) → (xs : Vec ℕ n) → fold[ gs , xs ]= v₁ → fold[ gs , xs ]= v₂ → v₁ ≡ v₂
-fold'-lemma [] [] [] _ _ _ = refl
-fold'-lemma (g ∷ gs) (y₁ ∷ ys₁) (y₂ ∷ ys₂) x (g[x]≡y₁ , gs[x]≡ys₁) (g[x]≡y₂ , gs[x]≡ys₂) = Vec-ext y₁≡y₂ ys₁≡ys₂
-  where
-    y₁≡y₂ : y₁ ≡ y₂
-    y₁≡y₂ = μR-functional g x y₁ y₂ g[x]≡y₁ g[x]≡y₂
+{-
+ -- fold (Vec-ext ∘ μR-functional) refl ?
+ -- fold : B → (A → B → B) → List A → B
 
-    ys₁≡ys₂ : ys₁ ≡ ys₂
-    ys₁≡ys₂ = fold'-lemma gs ys₁ ys₂ x gs[x]≡ys₁ gs[x]≡ys₂
-
-prim-rec-lemma : {n : ℕ} → (f : μR n) → (g : μR (2 + n)) → (m : ℕ) → (xs : Vec ℕ n) → (y₁ y₂ : ℕ) → (prim-rec f g) [ (m ∷ xs) ]= y₁ → (prim-rec f g) [ (m ∷ xs) ]= y₂ → y₁ ≡ y₂
-prim-rec-lemma {n} f g 0 xs y₁ y₂ f[xs]≡y₁ f[xs]≡y₂ = μR-functional f xs y₁ y₂ f[xs]≡y₁ f[xs]≡y₂
-prim-rec-lemma {n} f g (suc m) xs y₁ y₂ (r₁ , (rec[m∷xs]≡r₁ , g[1+m∷r₁∷xs]≡y₁)) (r₂ , (rec[m∷xs]≡r₂ , g[1+m∷r₂∷xs]≡y₂)) = proof
-  where
-    r₁≡r₂ : r₁ ≡ r₂
-    r₁≡r₂ = prim-rec-lemma f g m xs r₁ r₂ rec[m∷xs]≡r₁ rec[m∷xs]≡r₂
-
-    lemma : g [ ((1 + m) ∷ r₁ ∷ xs) ]= y₂
-    lemma = resp (λ r → g [ ((1 + m) ∷ r ∷ xs) ]= y₂) (≡-sym r₁≡r₂) g[1+m∷r₂∷xs]≡y₂
-
-    proof = μR-functional g ((1 + m) ∷ r₁ ∷ xs) y₁ y₂ g[1+m∷r₁∷xs]≡y₁ lemma
-
-μR-functional zero _ y₁ y₂ y₁≡0 y₂≡0 = ≡-trans y₁≡0 (≡-sym y₂≡0)
-μR-functional succ (x ∷ []) y₁ y₂ y₁≡1+x y₂≡1+x = ≡-trans y₁≡1+x (≡-sym y₂≡1+x)
-μR-functional (proj n i) xs y₁ y₂ y₁≡xs[i] y₂≡xs[i] = ≡-trans y₁≡xs[i] (≡-sym y₂≡xs[i])
-μR-functional (prim-rec f g) (n ∷ xs) y₁ y₂ hyp₁ hyp₂ = prim-rec-lemma f g n xs y₁ y₂ hyp₁ hyp₂
-μR-functional (μ-rec f) xs y₁ y₂ hyp₁ hyp₂ = min-Nat-unique (λ n → f [ (n ∷ xs) ]= 0) hyp₁ hyp₂
-μR-functional (comp f gs) xs y₁ y₂ (v₁ , (gs[xs]≡v₁ , f[v₁]≡y₁)) (v₂ , (gs[xs]≡v₂ , f[v₂]≡y₂)) = μR-functional f v₂ y₁ y₂ f[v₂]≡y₁ f[v₂]≡y₂
-  where
-    v₁≡v₂ : v₁ ≡ v₂
-    v₁≡v₂ = fold'-lemma gs v₁ v₂ xs gs[xs]≡v₁ gs[xs]≡v₂
-
-    f[v₂]≡y₁ : f [ v₂ ]= y₁
-    f[v₂]≡y₁ = resp (λ v → f [ v ]= y₁) v₁≡v₂ f[v₁]≡y₁
-
-
+-}
 μR-functional-vec : {n k : ℕ} → (gs : Vec (μR n) k) → (xs : Vec ℕ n) → (v₁ v₂ : Vec ℕ k) → fold[ gs , xs ]= v₁ → fold[ gs , xs ]= v₂ → v₁ ≡ v₂
+{-
+μR-functional-vec gs xs ys₁ ys₂ h₁ h₂ = fold (Vec-ext ∘ μR-functional) refl 
+-}
+
 μR-functional-vec {n} {0} [] _ [] [] unit unit = refl
 μR-functional-vec {n} {suc k} (g ∷ gs) xs (y₁ ∷ ys₁) (y₂ ∷ ys₂) (g[xs]≡y₁ , gs[xs]≡ys₁) (g[xs]≡y₂ , gs[xs]≡ys₂) = Vec-ext y₁≡y₂ ys₁≡ys₂
   where
@@ -159,6 +131,41 @@ prim-rec-lemma {n} f g (suc m) xs y₁ y₂ (r₁ , (rec[m∷xs]≡r₁ , g[1+m�
 
     ys₁≡ys₂ : ys₁ ≡ ys₂
     ys₁≡ys₂ = μR-functional-vec gs xs ys₁ ys₂ gs[xs]≡ys₁ gs[xs]≡ys₂
+
+
+
+μR-functional-prim-rec : {n : ℕ} → (f : μR n) → (g : μR (2 + n)) → (m : ℕ) → (xs : Vec ℕ n) → (y₁ y₂ : ℕ) → (prim-rec f g) [ (m ∷ xs) ]= y₁ → (prim-rec f g) [ (m ∷ xs) ]= y₂ → y₁ ≡ y₂
+μR-functional-prim-rec {n} f g 0 xs y₁ y₂ f[xs]≡y₁ f[xs]≡y₂ = μR-functional f xs y₁ y₂ f[xs]≡y₁ f[xs]≡y₂
+μR-functional-prim-rec {n} f g (suc m) xs y₁ y₂ (r₁ , (rec[m∷xs]≡r₁ , g[1+m∷r₁∷xs]≡y₁)) (r₂ , (rec[m∷xs]≡r₂ , g[1+m∷r₂∷xs]≡y₂)) = proof
+  where
+    r₁≡r₂ : r₁ ≡ r₂
+    r₁≡r₂ = μR-functional-prim-rec f g m xs r₁ r₂ rec[m∷xs]≡r₁ rec[m∷xs]≡r₂
+
+    lemma : g [ ((1 + m) ∷ r₁ ∷ xs) ]= y₂
+    lemma = resp (λ r → g [ ((1 + m) ∷ r ∷ xs) ]= y₂) (≡-sym r₁≡r₂) g[1+m∷r₂∷xs]≡y₂
+
+    proof = μR-functional g ((1 + m) ∷ r₁ ∷ xs) y₁ y₂ g[1+m∷r₁∷xs]≡y₁ lemma
+
+
+
+μR-functional zero _ y₁ y₂ y₁≡0 y₂≡0 = ≡-trans y₁≡0 (≡-sym y₂≡0)
+μR-functional succ (x ∷ []) y₁ y₂ y₁≡1+x y₂≡1+x = ≡-trans y₁≡1+x (≡-sym y₂≡1+x)
+μR-functional (proj n i) xs y₁ y₂ y₁≡xs[i] y₂≡xs[i] = ≡-trans y₁≡xs[i] (≡-sym y₂≡xs[i])
+μR-functional (prim-rec f g) (n ∷ xs) y₁ y₂ hyp₁ hyp₂ = μR-functional-prim-rec f g n xs y₁ y₂ hyp₁ hyp₂
+μR-functional (μ-rec f) xs y₁ y₂ hyp₁ hyp₂ = min-Nat-unique (λ n → f [ (n ∷ xs) ]= 0) hyp₁ hyp₂
+μR-functional (comp f gs) xs y₁ y₂ (v₁ , (gs[xs]≡v₁ , f[v₁]≡y₁)) (v₂ , (gs[xs]≡v₂ , f[v₂]≡y₂)) = μR-functional f v₂ y₁ y₂ f[v₂]≡y₁ f[v₂]≡y₂
+  where
+    v₁≡v₂ : v₁ ≡ v₂
+    v₁≡v₂ = μR-functional-vec gs xs v₁ v₂ gs[xs]≡v₁ gs[xs]≡v₂
+
+    f[v₂]≡y₁ : f [ v₂ ]= y₁
+    f[v₂]≡y₁ = resp (λ v → f [ v ]= y₁) v₁≡v₂ f[v₁]≡y₁
+
+
+
+
+
+
 
 
 
@@ -339,7 +346,7 @@ fold''-lemma (g ∷ gs) (g-PR , gs-PR) = (μR→PR g g-PR) ∷ (fold''-lemma gs 
 
 {-
   This is to help construct the "diagonalization gadget" for proving the undecidability of the halting problem
-  Intuitively it has the semantics that it will halt on input 0 and loop on input 1
+  Intuitively it has the semantics that it will halt on input 0 and loop on any other input
 -}
 μR-K-helper : μR 1
 μR-K-helper = prim-rec μR-halt-example μR-loop-example2
@@ -370,84 +377,107 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
       )
     )
   )
-μR-halting-undecidable (e , (H , H-def)) = proof
+μR-halting-undecidable (e , (H , H-def)) = contradiction
   where
+    {-
+      Intuitively, on input x, K runs H[x,x].
+      If H[x,x] returns 0 indicating that x loops on input x, then K halts
+      If H[x,x] returns 1 indicating that x halts on input x, then K loops
+    -}
+
+    K' = μR-K-helper
+    
+    K'[0]≡0 : K' [ (0 ∷ []) ]= 0
+    K'[0]≡0 = μR-K-helper-halts-on-0
+    ¬∃y,K'[1]≡y = μR-K-helper-loops-on-1
+
+    π₀ = proj 1 zero
+    
     K : μR 1
-    K = comp μR-K-helper (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ [])
+    K = comp K' (comp H (π₀ ∷ π₀ ∷ []) ∷ [])
 
-    lemma1 : (H [ ((e K) ∷ (e K) ∷ []) ]= 0) ⊎ (H [ ((e K) ∷ (e K) ∷ []) ]= 1)
-    lemma1 = proj₁ (H-def K ((e K) ∷ []))
+    ϕ = e K
+    H[ϕ,ϕ] = H [ (ϕ ∷ ϕ ∷ []) ]= 1
+    ¬H[ϕ,ϕ] = H [ (ϕ ∷ ϕ ∷ []) ]= 0
 
-    lemma2 : (H [ ((e K) ∷ (e K) ∷ []) ]= 1) ↔ (Σ[ y ∈ ℕ ] (K [ ((e K) ∷ []) ]= y))
-    lemma2 = proj₂ (H-def K ((e K) ∷ []))
+    {-
+      By definition, H always terminates with output either 0 or 1
+    -}
+    LEM[H[ϕ,ϕ]] : ¬H[ϕ,ϕ] ⊎ H[ϕ,ϕ]
+    LEM[H[ϕ,ϕ]] = proj₁ (H-def K (ϕ ∷ []))
 
-    lemma3 : ¬ (Σ[ y ∈ ℕ ] (K [ ((e K) ∷ []) ]= y))
-    lemma3 (y , K[K]≡y) = subproof
+    {-
+      By definition, H terminates with 1 on input pair (ϕ₁, ϕ₂) exactly when ϕ₁ = e P where P is a μ-recursive function and P is defined on input ϕ₂ 
+    -}
+    H[ϕ,ϕ]→Defined[K[ϕ]] : H[ϕ,ϕ] → μR-Defined K (ϕ ∷ [])
+    H[ϕ,ϕ]→Defined[K[ϕ]] = proj₁ (proj₂ (H-def K (ϕ ∷ [])))
+
+    Defined[K[ϕ]]→H[ϕ,ϕ] : μR-Defined K (ϕ ∷ []) → H[ϕ,ϕ]
+    Defined[K[ϕ]]→H[ϕ,ϕ] = proj₂ (proj₂ (H-def K (ϕ ∷ [])))
+
+    
+
+    {-
+      K is not defined on input ϕ, because then H[ϕ,ϕ] ≡ 1, and then K' must be defined on 1 otherwise K would be undefined on ϕ, but K' is not defined on 1
+    -}
+    ¬Defined[K[ϕ]] : ¬ (μR-Defined K (ϕ ∷ []))
+    ¬Defined[K[ϕ]] Defined[K[ϕ]]@(y , K[ϕ]≡y) = contradiction
       where
-        sublemma1 : H [ ((e K) ∷ (e K) ∷ []) ]= 1
-        sublemma1 = (proj₂ lemma2) (y , K[K]≡y)
+        H[ϕ,ϕ]-proof : H[ϕ,ϕ]
+        H[ϕ,ϕ]-proof = Defined[K[ϕ]]→H[ϕ,ϕ] Defined[K[ϕ]]
 
-        sublemma2 : K [ ((e K) ∷ []) ]= y
-        sublemma2 = K[K]≡y
+        
+        ∃v,[H[ϕ,ϕ]≡v]×[K'[v]≡y] : Σ[ v ∈ Vec ℕ 1 ] ((fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= v) × K' [ v ]= y)
+        ∃v,[H[ϕ,ϕ]≡v]×[K'[v]≡y] = K[ϕ]≡y
 
-        sublemma3 : Σ[ v ∈ Vec ℕ 1 ] ((fold[ (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) , ((e K) ∷ []) ]= v) × μR-K-helper [ v ]= y)
-        sublemma3 = K[K]≡y
-
+        {-
+          All of this to establish that v ≡ (x ∷ [])
+        -}
         v : Vec ℕ 1
-        v = proj₁ sublemma3
-
+        v = proj₁ K[ϕ]≡y
+      
         x : ℕ
         x = head v
 
-        xs : Vec ℕ 0
-        xs = tail v
-
-        v≡x∷xs : v ≡ (x ∷ xs)
-        v≡x∷xs = Vec-ext2 v
-
-        xs≡[] : xs ≡ []
-        xs≡[] = Vec-empty xs
-
-        x∷xs≡x∷[] : (x ∷ xs) ≡ (x ∷ [])
-        x∷xs≡x∷[] = cong (λ r → x ∷ r) xs≡[]
-
         v≡x∷[] : v ≡ (x ∷ [])
-        v≡x∷[] = ≡-trans v≡x∷xs x∷xs≡x∷[]
+        v≡x∷[] = Vec1-ext v
 
-        sublemma4 : fold[ (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) , ((e K) ∷ []) ]= v
-        sublemma4 = proj₁ (proj₂ sublemma3)
 
-        sublemma5 : fold[ (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) , ((e K) ∷ []) ]= (x ∷ [])
-        sublemma5 = resp (λ r → fold[ (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) , ((e K) ∷ []) ]= r) v≡x∷[] sublemma4
+        sublemma4 : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= v
+        sublemma4 = proj₁ (proj₂ K[ϕ]≡y)
 
-        sublemma6 : μR-interp (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ [])) ((e K) ∷ []) x
-        sublemma6 = proj₁ sublemma5
+        sublemma5 : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= (x ∷ [])
+        sublemma5 = resp (λ r → fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= r) v≡x∷[] sublemma4
 
-        sublemma7 : Σ[ v₂ ∈ Vec ℕ 2 ] ((fold[ ((proj 1 zero) ∷ (proj 1 zero) ∷ []) , ((e K) ∷ []) ]= v₂ ) × μR-interp H v₂ x)
-        sublemma7 = sublemma6
+        H∘<π₀,π₀>[ϕ]≡x : (comp H (π₀ ∷ π₀ ∷ [])) [ (ϕ ∷ []) ]= x
+        H∘<π₀,π₀>[ϕ]≡x = proj₁ sublemma5
+
+        
+        sublemma7 : Σ[ v₂ ∈ Vec ℕ 2 ] ((fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂ ) × (H [ v₂ ]= x))
+        sublemma7 = H∘<π₀,π₀>[ϕ]≡x
 
         v₂ : Vec ℕ 2
         v₂ = proj₁ sublemma7
 
-        
 
-        sublemma8 : fold[ ((proj 1 zero) ∷ (proj 1 zero) ∷ []) , ((e K) ∷ []) ]= v₂
+
+        sublemma8 : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂
         sublemma8 = proj₁ (proj₂ sublemma7)
 
-        sublemma9 : fold[ ((proj 1 zero) ∷ (proj 1 zero) ∷ []) , ((e K) ∷ []) ]= ((e K) ∷ (e K) ∷ [])
+        sublemma9 : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= (ϕ ∷ ϕ ∷ [])
         sublemma9 = (refl , (refl , unit))
 
-        v₂≡K∷K∷[] : v₂ ≡ ((e K) ∷ (e K) ∷ [])
-        v₂≡K∷K∷[] = μR-functional-vec ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ((e K) ∷ []) v₂ ((e K) ∷ (e K) ∷ []) sublemma8 sublemma9
+        v₂≡ϕ∷ϕ∷[] : v₂ ≡ (ϕ ∷ ϕ ∷ [])
+        v₂≡ϕ∷ϕ∷[] = μR-functional-vec ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ((e K) ∷ []) v₂ ((e K) ∷ (e K) ∷ []) sublemma8 sublemma9
 
-        sublemma10 : μR-interp H v₂ x
-        sublemma10 = proj₂ (proj₂ sublemma7)
+        H[v₂]≡x : H [ v₂ ]= x
+        H[v₂]≡x = proj₂ (proj₂ sublemma7)
 
-        sublemma11 : μR-interp H ((e K) ∷ (e K) ∷ []) x
-        sublemma11 = resp (λ r → μR-interp H r x) v₂≡K∷K∷[] sublemma10
+        H[ϕ,ϕ]≡x : H [ (ϕ ∷ ϕ ∷ []) ]= x
+        H[ϕ,ϕ]≡x = resp (λ r → H [ r ]= x) v₂≡ϕ∷ϕ∷[] H[v₂]≡x
 
         x≡1 : x ≡ 1
-        x≡1 = μR-functional H ((e K) ∷ (e K) ∷ []) x 1 sublemma11 sublemma1
+        x≡1 = μR-functional H (ϕ ∷ ϕ ∷ []) x 1 H[ϕ,ϕ]≡x H[ϕ,ϕ]-proof
 
         x∷[]≡1∷[] : (x ∷ []) ≡ (1 ∷ [])
         x∷[]≡1∷[] = cong (λ r → r ∷ []) x≡1
@@ -455,60 +485,46 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
         v≡1∷[] : v ≡ (1 ∷ [])
         v≡1∷[] = ≡-trans v≡x∷[] x∷[]≡1∷[]
 
-        sublemma12 :  μR-interp μR-K-helper v y
-        sublemma12 = proj₂ (proj₂ sublemma3)
+        K'[v]≡y : K' [ v ]= y
+        K'[v]≡y = proj₂ (proj₂ ∃v,[H[ϕ,ϕ]≡v]×[K'[v]≡y])
 
-        sublemma13 : μR-interp μR-K-helper (1 ∷ []) y
-        sublemma13 = resp (λ r → μR-interp μR-K-helper r y) v≡1∷[] sublemma12
-        
-        subproof = μR-K-helper-loops-on-1 (y , sublemma13)
+        K'[1]≡y : K' [ (1 ∷ []) ]= y
+        K'[1]≡y = resp (λ r → K' [ r ]= y) v≡1∷[] K'[v]≡y
 
-    H[K,K]≢1 : ¬ (μR-interp H ((e K) ∷ (e K) ∷ []) 1)
-    H[K,K]≢1 H[K,K]≡1 = lemma3 ((proj₁ lemma2) H[K,K]≡1)
+        ∃y,K'[1]≡y = y , K'[1]≡y
 
-    H[K,K]≢0 : ¬ (μR-interp H ((e K) ∷ (e K) ∷ []) 0)
-    H[K,K]≢0 H[K,K]≡0 = subproof
+        contradiction = ¬∃y,K'[1]≡y ∃y,K'[1]≡y
+
+    {-
+      H(ϕ,ϕ) ≢ 1 because H(ϕ,ϕ) → K is defined on ϕ, by definition of H, but K is not defined on ϕ
+    -}
+    H[ϕ,ϕ]≢1 : ¬ (H [ (ϕ ∷ ϕ ∷ []) ]= 1)
+    H[ϕ,ϕ]≢1 H[ϕ,ϕ]≡1 = ¬Defined[K[ϕ]] (H[ϕ,ϕ]→Defined[K[ϕ]] H[ϕ,ϕ]≡1)
+
+    {-
+      H(ϕ,ϕ) ≢ 0 because ¬H(ϕ,ϕ) → K is defined on ϕ, by definition of K (note K'[0] ≡ 0), but K is not defined on ϕ
+    -}
+    H[ϕ,ϕ]≢0 : ¬ (H [ (ϕ ∷ ϕ ∷ []) ]= 0)
+    H[ϕ,ϕ]≢0 H[ϕ,ϕ]≡0 = contradiction
       where
-        sublemma1 : μR-interp H ((e K) ∷ (e K) ∷ []) 0
-        sublemma1 = H[K,K]≡0
-
-        sublemma2 :  ¬ (Σ[ y ∈ ℕ ] (μR-interp K ((e K) ∷ []) y))
-        sublemma2 hyp = subsubproof
+        K[ϕ]≡0 : K [ (ϕ ∷ []) ]= 0
+        K[ϕ]≡0 = subsubproof
           where
-             subsublemma1 : μR-interp H ((e K) ∷ (e K) ∷ []) 1
-             subsublemma1 = (proj₂ lemma2) hyp
+            <π₀,π₀>[ϕ]≡[ϕ,ϕ] : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= (ϕ ∷ ϕ ∷ [])
+            <π₀,π₀>[ϕ]≡[ϕ,ϕ] = refl , (refl , unit)
 
-             1≡0 : 1 ≡ 0
-             1≡0 = μR-functional H ((e K) ∷ (e K) ∷ []) 1 0 subsublemma1 sublemma1
-             
-             subsubproof = 1+n≢0 1≡0
-        sublemma3 : μR-interp K (e K ∷ []) 0
-        sublemma3 = subsubproof
-          where
-            v₂ : Vec ℕ 2
-            v₂ = ((e K) ∷ (e K) ∷ [])
+            <H∘<π₀,π₀>>[ϕ]≡0 : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= (0 ∷ [])
+            <H∘<π₀,π₀>>[ϕ]≡0 = ((ϕ ∷ ϕ ∷ []) , (<π₀,π₀>[ϕ]≡[ϕ,ϕ] , H[ϕ,ϕ]≡0)) , unit
             
-            subsublemma1 : fold[ ((proj 1 zero) ∷ (proj 1 zero) ∷ []) , (e K ∷ []) ]= v₂
-            subsublemma1 = refl , (refl , unit)
-
-            v : Vec ℕ 1
-            v = (0 ∷ [])
-
-            subsublemma2 : μR-interp H v₂ (head v)
-            subsublemma2 = H[K,K]≡0
-
-            subsublemma3 : fold[ (comp H ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ∷ []) , (e K ∷ []) ]= v
-            subsublemma3 = (v₂ , (subsublemma1 , subsublemma2)) , unit
-
-            subsublemma4 : μR-interp μR-K-helper v 0
-            subsublemma4 = μR-K-helper-halts-on-0
-
+            subsubproof = (0 ∷ []) , (<H∘<π₀,π₀>>[ϕ]≡0 , K'[0]≡0)
             
-            subsubproof = v , (subsublemma3 , subsublemma4)
-        subproof = sublemma2 (0 , sublemma3)
+        Defined[K[ϕ]] : μR-Defined K (ϕ ∷ [])
+        Defined[K[ϕ]] = 0 , K[ϕ]≡0
+        
+        contradiction = ¬Defined[K[ϕ]] Defined[K[ϕ]]
 
-    lemma6 : ¬ ((μR-interp H ((e K) ∷ (e K) ∷ []) 0) ⊎ (μR-interp H ((e K) ∷ (e K) ∷ []) 1))
-    lemma6 (inj₁ H[K,K]≡0) = H[K,K]≢0 H[K,K]≡0
-    lemma6 (inj₂ H[K,K]≡1) = H[K,K]≢1 H[K,K]≡1
+    ¬LEM[H[ϕ,ϕ]] : ¬ (¬H[ϕ,ϕ] ⊎ H[ϕ,ϕ])
+    ¬LEM[H[ϕ,ϕ]] (inj₁ H[ϕ,ϕ]≡0) = H[ϕ,ϕ]≢0 H[ϕ,ϕ]≡0
+    ¬LEM[H[ϕ,ϕ]] (inj₂ H[ϕ,ϕ]≡1) = H[ϕ,ϕ]≢1 H[ϕ,ϕ]≡1
     
-    proof = lemma6 lemma1
+    contradiction = ¬LEM[H[ϕ,ϕ]] LEM[H[ϕ,ϕ]]
