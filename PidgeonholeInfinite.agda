@@ -198,3 +198,54 @@ pidgeonhole-infinite2 f appearances appearances-criteria (suc m) = n , proof
         fx≥m+1 = fx>m
         
         fx>m+1 = ≤∧≢⇒< fx≥m+1 (≢-sym fx≢m+1)
+
+
+{-
+  If for every x you can select an index greater than or equal to the index of any appearance of x in the sequence,
+  then the sequence always grows arbitrarily large.
+-}
+pidgeonhole-infinite3 :
+  (f : ℕ → ℕ) →
+  (max-appearance : (a : ℕ) → Σ[ i ∈ ℕ ] ((i' : ℕ) → (f i' ≡ a) → i ≥ i')) →
+  (m : ℕ) →
+  Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → ((f x) > m))
+pidgeonhole-infinite3 f max-appearance 0 = n , proof
+  where
+    n = proj₁ (max-appearance 0)
+    proof : (x : ℕ) → (x > n) → f x > 0
+    proof x x>n = fx>0
+      where
+        fx≢0 : f x ≢ 0
+        fx≢0 fx≡0 = contradiction
+          where
+            n≥x : n ≥ x
+            n≥x = (proj₂ (max-appearance 0)) x fx≡0
+            
+            contradiction =  <⇒≱ x>n n≥x
+        fx>0 = n≢0⇒n>0 fx≢0
+pidgeonhole-infinite3 f max-appearance (suc m) = n , proof
+  where
+    ind : Σ[ n' ∈ ℕ ] ((x : ℕ) → (x > n') → ((f x) > m))
+    ind = pidgeonhole-infinite3 f max-appearance m
+
+    n' = proj₁ ind
+    i = proj₁ (max-appearance (suc m))
+    n = max i n'
+    
+    proof : (x : ℕ) → (x > n) → f x > (suc m)
+    proof x x>n = fx>1+m
+      where
+        n≥n' = m⊔n≥n i n'
+        x>n' = <-transʳ n≥n' x>n
+        n≥i = m⊔n≥m i n'
+        x>i = <-transʳ n≥i x>n
+        fx>m = (proj₂ ind) x x>n'
+        fx≥1+m = fx>m
+        
+        fx≢1+m : f x ≢ (suc m)
+        fx≢1+m fx≡1+m = contradiction
+          where
+            i≥x : i ≥ x
+            i≥x = (proj₂ (max-appearance (suc m))) x fx≡1+m
+            contradiction = <⇒≱ x>i i≥x
+        fx>1+m = ≤∧≢⇒< fx≥1+m (≢-sym fx≢1+m)
