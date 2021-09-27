@@ -4,10 +4,10 @@ open import Agda.Primitive public
 open import Data.Bool public using (Bool ; true ; false ; not ; _∧_ ; _∨_ ; _xor_ ; if_then_else_)
 open import Data.Empty public using (⊥ ; ⊥-elim)
 open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ< ; raise)
-open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
+open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all ; lookup) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
 open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_ ; _⊔_ to max)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒<)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; ⊔-identityʳ)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -413,3 +413,23 @@ m⊔n≥m : (m n : ℕ) → (max m n) ≥ m
 m⊔n≥m 0 n = z≤n
 m⊔n≥m (suc m) (suc n) = s≤s (m⊔n≥m m n)
 m⊔n≥m (suc m) 0 = ≤-refl
+
+list-max : (l : List ℕ) → ℕ
+list-max [] = 0
+list-max (x ∷ xs) = max x (list-max xs)
+
+list-max-is-max : (l : List ℕ) → (i : Fin (length l)) → (list-max l) ≥ (lookup l i)
+list-max-is-max [] ()
+list-max-is-max (x ∷ xs) zero = resp (λ y → (list-max (x ∷ xs)) ≥ y) refl (m⊔n≥m x (list-max xs))
+list-max-is-max (x ∷ xs) (suc i) = proof
+  where
+    ind : (list-max xs) ≥ (lookup xs i)
+    ind = list-max-is-max xs i
+
+    lmax-x-xs≥lmax-xs : (list-max (x ∷ xs)) ≥ (list-max xs)
+    lmax-x-xs≥lmax-xs = m⊔n≥n x (list-max xs)
+
+    lmax-xs≥x∷xs[i+1] : (list-max xs) ≥ (lookup (x ∷ xs) (suc i))
+    lmax-xs≥x∷xs[i+1] = resp (λ y → (list-max xs) ≥ y) refl ind
+
+    proof = ≤-trans lmax-xs≥x∷xs[i+1] lmax-x-xs≥lmax-xs
