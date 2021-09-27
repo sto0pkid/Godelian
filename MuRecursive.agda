@@ -389,7 +389,7 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
     
     K'[0]≡0 : K' [ (0 ∷ []) ]= 0
     K'[0]≡0 = μR-K-helper-halts-on-0
-    ¬∃y,K'[1]≡y = μR-K-helper-loops-on-1
+    ¬Defined[K'[1]] = μR-K-helper-loops-on-1
 
     π₀ = proj 1 zero
     
@@ -423,10 +423,13 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
     ¬Defined[K[ϕ]] : ¬ (μR-Defined K (ϕ ∷ []))
     ¬Defined[K[ϕ]] Defined[K[ϕ]]@(y , K[ϕ]≡y) = contradiction
       where
-        H[ϕ,ϕ]-proof : H[ϕ,ϕ]
-        H[ϕ,ϕ]-proof = Defined[K[ϕ]]→H[ϕ,ϕ] Defined[K[ϕ]]
+        H[ϕ,ϕ]≡1 : H [ (ϕ ∷ ϕ ∷ []) ]= 1
+        H[ϕ,ϕ]≡1 = Defined[K[ϕ]]→H[ϕ,ϕ] Defined[K[ϕ]]
 
-        
+        {-
+          If K(ϕ) ≡ y then there must be some v such that <H∘<π₀,π₀>>[ϕ] ≡ v and K'(v) ≡ y
+        -}
+
         ∃v,[H[ϕ,ϕ]≡v]×[K'[v]≡y] : Σ[ v ∈ Vec ℕ 1 ] ((fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= v) × K' [ v ]= y)
         ∃v,[H[ϕ,ϕ]≡v]×[K'[v]≡y] = K[ϕ]≡y
 
@@ -443,41 +446,47 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
         v≡x∷[] = Vec1-ext v
 
 
-        sublemma4 : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= v
-        sublemma4 = proj₁ (proj₂ K[ϕ]≡y)
+        <H∘<π₀,π₀>>[ϕ]≡v : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= v
+        <H∘<π₀,π₀>>[ϕ]≡v = proj₁ (proj₂ K[ϕ]≡y)
 
-        sublemma5 : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= (x ∷ [])
-        sublemma5 = resp (λ r → fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= r) v≡x∷[] sublemma4
+        <H∘<π₀,π₀>>[ϕ]≡[x] : fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= (x ∷ [])
+        <H∘<π₀,π₀>>[ϕ]≡[x] = resp (λ r → fold[ (comp H (π₀ ∷ π₀ ∷ []) ∷ []) , (ϕ ∷ []) ]= r) v≡x∷[] <H∘<π₀,π₀>>[ϕ]≡v
 
-        H∘<π₀,π₀>[ϕ]≡x : (comp H (π₀ ∷ π₀ ∷ [])) [ (ϕ ∷ []) ]= x
-        H∘<π₀,π₀>[ϕ]≡x = proj₁ sublemma5
+        H∘<π₀,π₀>[ϕ]≡x :  (comp H (π₀ ∷ π₀ ∷ [])) [ (ϕ ∷ []) ]= x
+                       -- Σ[ v₂ ∈ Vec ℕ 2 ] ((fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂ ) × (H [ v₂ ]= x))
+        H∘<π₀,π₀>[ϕ]≡x = proj₁ <H∘<π₀,π₀>>[ϕ]≡[x]
 
-        
-        sublemma7 : Σ[ v₂ ∈ Vec ℕ 2 ] ((fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂ ) × (H [ v₂ ]= x))
-        sublemma7 = H∘<π₀,π₀>[ϕ]≡x
 
+        {-
+          If H∘<π₀,π₀>(ϕ) ≡ x then there must exist v₂ such that <π₀,π₀>(ϕ) ≡ v₂ and H(v₂) ≡ x
+        -}
         v₂ : Vec ℕ 2
-        v₂ = proj₁ sublemma7
+        v₂ = proj₁ H∘<π₀,π₀>[ϕ]≡x
+
+        <π₀,π₀>[ϕ]≡v₂ : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂
+        <π₀,π₀>[ϕ]≡v₂ = proj₁ (proj₂ H∘<π₀,π₀>[ϕ]≡x)
+
+        {-
+          But <π₀,π₀>(ϕ) ≡ (ϕ ∷ ϕ ∷ []), so because μ-recursive functions are functional, v₂ ≡ (ϕ ∷ ϕ ∷ [])
+        -}
+        <π₀,π₀>[ϕ]≡[ϕ,ϕ] : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= (ϕ ∷ ϕ ∷ [])
+        <π₀,π₀>[ϕ]≡[ϕ,ϕ] = (refl , (refl , unit))
+
+        v₂≡[ϕ,ϕ] : v₂ ≡ (ϕ ∷ ϕ ∷ [])
+        v₂≡[ϕ,ϕ] = μR-functional-vec (π₀ ∷ π₀ ∷ []) (ϕ ∷ []) v₂ (ϕ ∷ ϕ ∷ []) <π₀,π₀>[ϕ]≡v₂ <π₀,π₀>[ϕ]≡[ϕ,ϕ]
 
 
-
-        sublemma8 : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= v₂
-        sublemma8 = proj₁ (proj₂ sublemma7)
-
-        sublemma9 : fold[ (π₀ ∷ π₀ ∷ []) , (ϕ ∷ []) ]= (ϕ ∷ ϕ ∷ [])
-        sublemma9 = (refl , (refl , unit))
-
-        v₂≡ϕ∷ϕ∷[] : v₂ ≡ (ϕ ∷ ϕ ∷ [])
-        v₂≡ϕ∷ϕ∷[] = μR-functional-vec ((proj 1 zero) ∷ (proj 1 zero) ∷ []) ((e K) ∷ []) v₂ ((e K) ∷ (e K) ∷ []) sublemma8 sublemma9
-
+        {-
+          Because H(v₂) ≡ x and v₂ ≡ [ϕ,ϕ], it must be the case that H(ϕ,ϕ) ≡ x
+        -}
         H[v₂]≡x : H [ v₂ ]= x
-        H[v₂]≡x = proj₂ (proj₂ sublemma7)
+        H[v₂]≡x = proj₂ (proj₂ H∘<π₀,π₀>[ϕ]≡x)
 
         H[ϕ,ϕ]≡x : H [ (ϕ ∷ ϕ ∷ []) ]= x
-        H[ϕ,ϕ]≡x = resp (λ r → H [ r ]= x) v₂≡ϕ∷ϕ∷[] H[v₂]≡x
+        H[ϕ,ϕ]≡x = resp (λ r → H [ r ]= x) v₂≡[ϕ,ϕ] H[v₂]≡x
 
         x≡1 : x ≡ 1
-        x≡1 = μR-functional H (ϕ ∷ ϕ ∷ []) x 1 H[ϕ,ϕ]≡x H[ϕ,ϕ]-proof
+        x≡1 = μR-functional H (ϕ ∷ ϕ ∷ []) x 1 H[ϕ,ϕ]≡x H[ϕ,ϕ]≡1
 
         x∷[]≡1∷[] : (x ∷ []) ≡ (1 ∷ [])
         x∷[]≡1∷[] = cong (λ r → r ∷ []) x≡1
@@ -491,9 +500,9 @@ Proof that the halting problem for μ-recursive functions is undecidable (by μ-
         K'[1]≡y : K' [ (1 ∷ []) ]= y
         K'[1]≡y = resp (λ r → K' [ r ]= y) v≡1∷[] K'[v]≡y
 
-        ∃y,K'[1]≡y = y , K'[1]≡y
+        Defined[K'[1]] = y , K'[1]≡y
 
-        contradiction = ¬∃y,K'[1]≡y ∃y,K'[1]≡y
+        contradiction = ¬Defined[K'[1]] Defined[K'[1]]
 
     {-
       H(ϕ,ϕ) ≢ 1 because H(ϕ,ϕ) → K is defined on ϕ, by definition of H, but K is not defined on ϕ

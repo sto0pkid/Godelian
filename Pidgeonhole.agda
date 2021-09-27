@@ -41,4 +41,3 @@ pidgeonhole (suc (suc m)) (suc n) sn>ssm (1 ∷ xs) sn=Σv = proof
     proof = ∃-monotonic (λ x → x > 1) (pidgeonhole (suc m) n n>sm xs n=Σxs) 1
 
 pidgeonhole (suc (suc m)) (suc n) _ ((suc (suc k)) ∷ xs) _ = zero , (s≤s (s≤s z≤n))
-

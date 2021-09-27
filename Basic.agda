@@ -6,8 +6,8 @@ open import Data.Empty public using (⊥ ; ⊥-elim)
 open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ< ; raise)
 open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
-open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n)
+open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_ ; _⊔_ to max)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒<)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -403,3 +403,13 @@ Fin-sub {1} zero (suc m) (s≤s ())
 Fin-sub {suc (suc n)} f 0 hyp = f
 Fin-sub {suc (suc n)} zero (suc m) (s≤s m<1+n) = Fin-sub zero m m<1+n
 Fin-sub {suc (suc n)} (suc f) (suc m) (s≤s m<1+n) = Fin-sub f m m<1+n
+
+m⊔n≥n : (m n : ℕ) → (max m n) ≥ n
+m⊔n≥n m 0 = z≤n
+m⊔n≥n 0 (suc n) = ≤-refl
+m⊔n≥n (suc m) (suc n) = s≤s (m⊔n≥n m n)
+
+m⊔n≥m : (m n : ℕ) → (max m n) ≥ m
+m⊔n≥m 0 n = z≤n
+m⊔n≥m (suc m) (suc n) = s≤s (m⊔n≥m m n)
+m⊔n≥m (suc m) 0 = ≤-refl
