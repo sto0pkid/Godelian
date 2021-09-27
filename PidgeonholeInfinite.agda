@@ -22,6 +22,13 @@ pidgeonhole-infinite2 : (f : ℕ → ℕ) → Injective f →
 
 -- essentially stating that any bijective function ℕ → ℕ is asymptotically monotonic
 pidgeonhole-infinite : (f : ℕ → ℕ) → Bijective f → (m : ℕ) → Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → (f x > m))
+{-
+  For the 0 case:
+
+  Choose n = f⁻¹ 0 , which can be found by surjectivity
+  Any x different from n will have (f x) ≢ 0 , due to injectivity.
+  If (f x) ≢ 0 then f x > 0, QED.
+-}
 pidgeonhole-infinite f (f-inj , f-surj) 0 = n , proof
   where
     n = proj₁ (f-surj 0)
@@ -45,6 +52,16 @@ pidgeonhole-infinite f (f-inj , f-surj) 0 = n , proof
             fx≡fn = ≡-trans fx≡0 (≡-sym fn≡0)
             contradiction = fx≢fn fx≡fn
         subproof = n≢0⇒n>0 fx≢0
+{-
+  For the (suc m) case:
+
+  By induction, there is some n' such that for all x > n', f x > m
+  Choose n = max (f⁻¹ (1+m)) n' ; f⁻¹ (1+m) can be found by surjectivity.
+  If x > n then:
+    * x > n' and so f x > m and so f x ≥ 1+m
+    * x > (f⁻¹ (1+m)) and so f x ≢ 1+m
+  Since f x ≥ 1+m and f x ≢ 1+m then f x > 1+m
+-}
 pidgeonhole-infinite f (f-inj , f-surj) (suc m) = n , proof
   where
     ind : Σ[ n' ∈ ℕ ] ((x : ℕ) → (x > n') → (f x > m))
