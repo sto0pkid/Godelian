@@ -249,3 +249,21 @@ pidgeonhole-infinite3 f max-appearance (suc m) = n , proof
             i≥x = (proj₂ (max-appearance (suc m))) x fx≡1+m
             contradiction = <⇒≱ x>i i≥x
         fx>1+m = ≤∧≢⇒< fx≥1+m (≢-sym fx≢1+m)
+
+pidgeonhole-infinite4 :
+  (f : ℕ → ℕ) →
+  (epsilon-delta : (m : ℕ) → Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → ((f x) > m))) →
+  (a : ℕ) → Σ[ i ∈ ℕ ] ((i' : ℕ) → (f i' ≡ a) → i ≥ i')
+pidgeonhole-infinite4 f epsilon-delta a = i , proof
+  where
+    i = proj₁ (epsilon-delta a)
+    proof : (i' : ℕ) → (f i' ≡ a) → i ≥ i'
+    proof i' fi'≡a = i≥i'
+      where
+        i≮i' : ¬ (i < i')
+        i≮i' i<i' = contradiction
+          where
+            fi'>a : f i' > a
+            fi'>a = (proj₂ (epsilon-delta a)) i' i<i'
+            contradiction = >⇒≢ fi'>a fi'≡a
+        i≥i' = ≮⇒≥ i≮i'
