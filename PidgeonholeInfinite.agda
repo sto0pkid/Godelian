@@ -250,6 +250,8 @@ pidgeonhole-infinite3 f max-appearance (suc m) = n , proof
             contradiction = <⇒≱ x>i i≥x
         fx>1+m = ≤∧≢⇒< fx≥1+m (≢-sym fx≢1+m)
 
+
+
 pidgeonhole-infinite4 :
   (f : ℕ → ℕ) →
   (epsilon-delta : (m : ℕ) → Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → ((f x) > m))) →
@@ -267,3 +269,71 @@ pidgeonhole-infinite4 f epsilon-delta a = i , proof
             fi'>a = (proj₂ (epsilon-delta a)) i' i<i'
             contradiction = >⇒≢ fi'>a fi'≡a
         i≥i' = ≮⇒≥ i≮i'
+
+{-
+  If you have an encoding of Nats as bitstrings such that for every length x you can produce a list of indexes of all appearances of encodings of length x,
+  then the encodings must grow arbitrarily large.
+-}
+pidgeonhole-encoding :
+  (f : ℕ → List Bool) →
+  (appearances : (len : ℕ) → Σ[ l ∈ List ℕ ] ((x : ℕ) → length (f x) ≡ len → Σ[ i ∈ Fin (length l) ] (l [ i ]) ≡ x)) →
+  (m : ℕ) → Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → ((length (f x)) > m))
+pidgeonhole-encoding f appearances 0 = n , proof
+  where
+    l = proj₁ (appearances 0)
+    n = list-max l
+    proof : (x : ℕ) → (x > n) → length (f x) > 0
+    proof x x>n = |fx|>0
+      where
+        |fx|≢0 : length (f x) ≢ 0
+        |fx|≢0 |fx|≡0 = contradiction
+          where
+            ∃i,l[i]≡x : Σ[ i ∈ Fin (length l) ] (l [ i ] ≡ x)
+            ∃i,l[i]≡x = (proj₂ (appearances 0)) x |fx|≡0
+
+            i = proj₁ ∃i,l[i]≡x
+            
+            l[i]≡x : l [ i ] ≡ x
+            l[i]≡x = proj₂ ∃i,l[i]≡x
+
+            n≥l[i] : n ≥ l [ i ]
+            n≥l[i] = list-max-is-max l i
+
+            x>l[i] : x > l [ i ]
+            x>l[i] = <-transʳ n≥l[i] x>n
+
+            contradiction =  >⇒≢ x>l[i] (≡-sym l[i]≡x)
+        |fx|>0 =  n≢0⇒n>0 |fx|≢0
+pidgeonhole-encoding f appearances (suc m) = n , proof
+  where
+    ind : Σ[ n' ∈ ℕ ] ((x : ℕ) → (x > n') → ((length (f x)) > m))
+    ind = pidgeonhole-encoding f appearances m
+
+    n' = proj₁ ind
+    l = proj₁ (appearances (suc m))
+    n = max n' (list-max l)
+    proof : (x : ℕ) → (x > n) → ((length (f x)) > (suc m))
+    proof x x>n = |fx|>1+m
+      where
+        n≥n' = m⊔n≥m n' (list-max l)
+        x>n' = <-transʳ n≥n' x>n
+        n≥lmax = m⊔n≥n n' (list-max l)
+        x>lmax = <-transʳ n≥lmax x>n
+        |fx|>m = (proj₂ ind) x x>n'
+        |fx|≥1+m = |fx|>m
+        |fx|≢1+m : length (f x) ≢ (suc m)
+        |fx|≢1+m |fx|≡1+m = contradiction
+          where
+            ∃i,l[i]≡x : Σ[ i ∈ Fin (length l) ] (l [ i ] ≡ x)
+            ∃i,l[i]≡x = (proj₂ (appearances (suc m))) x |fx|≡1+m
+
+            i = proj₁ ∃i,l[i]≡x
+            l[i]≡x = proj₂ ∃i,l[i]≡x
+            
+            lmax≥l[i] : (list-max l) ≥ l [ i ]
+            lmax≥l[i] = list-max-is-max l i
+
+            n≥l[i] = ≤-trans lmax≥l[i] n≥lmax
+            x>l[i] = <-transʳ n≥l[i] x>n
+            contradiction =  >⇒≢ x>l[i] (≡-sym l[i]≡x)
+        |fx|>1+m =  ≤∧≢⇒< |fx|≥1+m (≢-sym |fx|≢1+m)
