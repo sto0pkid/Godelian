@@ -8,7 +8,7 @@ open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; ma
 open import Data.List.Properties public using (length-++ ; length-map)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
 open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_ ; _⊔_ to max)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; n≤1+n ; m<n⇒m≤1+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -462,3 +462,405 @@ inc-rev (true ∷ as) = false ∷ (inc-rev as)
 ℕ→Binary : ℕ → List Bool
 ℕ→Binary 0 = false ∷ []
 ℕ→Binary (suc n) = reverse (inc-rev (reverse (ℕ→Binary n)))
+
+lookupℕ : {A : Set} → List A → ℕ → Maybe A
+lookupℕ [] _ = nothing
+lookupℕ (x ∷ xs) 0 = just x
+lookupℕ (x ∷ xs) (suc n) = lookupℕ xs n
+
+lookupℕ-end : {A : Set} → List A → ℕ → Maybe A
+lookupℕ-end l n = lookupℕ (reverse l) n
+
+{-
+pushback-preserves-lookupℕ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (a : A) → lookupℕ l₁ n ≡ just a → lookupℕ (l₁ ++ l₂) ≡ just a
+pushback-preserves-lookupℕ {A} l₁ l₂ n a l₁[n]≡a = l₁++l₂[n]≡a
+  where
+    
+    l₁++l₂[n]≡a
+-}
+
+{-
+∷-preserves-lookupℕ-end : {A : Set} → (x : A) → (l : List A) → (n : ℕ) → (a : A) → lookupℕ-end l n ≡ just a → lookupℕ-end (x ∷ l) n ≡ just a
+∷-preserves-lookupℕ-end {A} x l n a l[n]≡a = x∷l[n]≡a
+  where
+    x∷l[n]≡a
+-}
+
+1+m<1+n→m<n : {m n : ℕ} → (suc m) < (suc n) → m < n
+1+m<1+n→m<n (s≤s m<n) = m<n
+
+
++ₗ-preserves-< : {m n : ℕ} → (x : ℕ) → m < n → (x + m) < (x + n)
++ₗ-preserves-< {m} {n} 0 m<n = m<n
++ₗ-preserves-< {m} {n} (suc x) m<n = 1+x+m<1+x+n
+  where
+    x+m<x+n : (x + m) < (x + n)
+    x+m<x+n = +ₗ-preserves-< {m} {n} x m<n
+    
+    1+x+m<1+x+n = s≤s x+m<x+n
+
++ᵣ-preserves-< : {m n : ℕ} → (x : ℕ) → m < n → (m + x) < (n + x)
++ᵣ-preserves-< {m} {n} x m<n = m+x<n+x
+  where
+    x+m<x+n : (x + m) < (x + n)
+    x+m<x+n = +ₗ-preserves-< x m<n
+
+    m+x<x+n : (m + x) < (x + n)
+    m+x<x+n = resp (λ y → y < (x + n)) (+-comm x m) x+m<x+n
+
+    m+x<n+x : (m + x) < (n + x)
+    m+x<n+x = resp (λ y → (m + x) < y) (+-comm x n) m+x<x+n
+
+
+lookup< : {A : Set} → (l : List A) → (n : ℕ) → n < length l → A
+lookup< [] _ ()
+lookup< (x ∷ xs) 0 _ = x
+lookup< l@(x ∷ xs) (suc n) 1+n<|l| = lookup< xs n n<|xs|
+  where
+    |l|≡1+|xs| : length l ≡ suc (length xs)
+    |l|≡1+|xs| = refl
+    
+    1+n<1+|xs| : suc n < suc (length xs)
+    1+n<1+|xs| = resp (λ y → suc n < y) |l|≡1+|xs| 1+n<|l|
+    
+    n<|xs| = 1+m<1+n→m<n 1+n<1+|xs|
+
+index-cons : {A : Set} → (l : List A) → (x : A) → (n : ℕ) → n < length l → (1 + n) < length (x ∷ l)
+index-cons {A} l x n n<|l| = s≤s n<|l|
+
+index-map-lemma : {A B : Set} → (l : List A) → (n : ℕ) → n < length l → (f : A → B) → n < length (map f l)
+index-map-lemma l n n<|l| f = resp (λ y → n < y) (≡-sym (length-map f l)) n<|l|
+
+index-++-lemma₁ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → n < length l₁ → n < length (l₁ ++ l₂)
+index-++-lemma₁ l₁ l₂ n n<|l₁| = n<|l₁++l₂|
+  where
+    |l₁++l₂|≡|l₁|+|l₂| : length (l₁ ++ l₂) ≡ length l₁ + length l₂
+    |l₁++l₂|≡|l₁|+|l₂| = length-++ l₁
+
+    |l₁|≤|l₁|+|l₂| : length l₁ ≤ length l₁ + length l₂
+    |l₁|≤|l₁|+|l₂| = m≤m+n (length l₁) (length l₂)
+
+    |l₁|≤|l₁++l₂| : length l₁ ≤ length (l₁ ++ l₂)
+    |l₁|≤|l₁++l₂| = resp (λ y → length l₁ ≤ y) (≡-sym |l₁++l₂|≡|l₁|+|l₂|) |l₁|≤|l₁|+|l₂|
+    
+    n<|l₁++l₂| = <-transˡ  n<|l₁| |l₁|≤|l₁++l₂|
+
+
+index-++-lemma₂ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → n < length l₂ → (length l₁) + n < length (l₁ ++ l₂)
+index-++-lemma₂ l₁ l₂ n n<|l₂| = |l₁|+n<|l₁++l₂|
+  where
+    |l₁|+|l₂|≡|l₁++l₂| : (length l₁) + (length l₂) ≡ length (l₁ ++ l₂)
+    |l₁|+|l₂|≡|l₁++l₂| = ≡-sym (length-++ l₁)
+
+    |l₁|+n<|l₁|+|l₂| : (length l₁) + n < (length l₁) + (length l₂)
+    |l₁|+n<|l₁|+|l₂| = +ₗ-preserves-< (length l₁) n<|l₂|
+    
+    |l₁|+n<|l₁++l₂| = resp (λ y → (length l₁) + n < y) |l₁|+|l₂|≡|l₁++l₂| |l₁|+n<|l₁|+|l₂|
+
+lookup<-cons-lemma : {A : Set} → (l : List A) → (x : A) → (n : ℕ) → (n<|l| : n < length l) → lookup< l n n<|l| ≡ lookup< (x ∷ l) (1 + n) (index-cons l x n n<|l|)
+lookup<-cons-lemma l x n n<|l| = refl
+
+lookup<-irrelevance : {A : Set} → (l : List A) → (n : ℕ) → (n<|l|₁ n<|l|₂ : n < length l) → lookup< l n n<|l|₁ ≡ lookup< l n n<|l|₂
+lookup<-irrelevance [] 0 ()
+lookup<-irrelevance (x ∷ xs) 0 _ _ = refl
+lookup<-irrelevance l@(x ∷ xs) (suc n) 1+n<|l|₁ 1+n<|l|₂ = proof
+  where
+    1+n<1+|xs|₁ : 1 + n < 1 + length xs
+    1+n<1+|xs|₁ = resp (λ y → suc n < y) refl 1+n<|l|₁
+
+    n<|xs|₁ : n < length xs
+    n<|xs|₁ = 1+m<1+n→m<n 1+n<1+|xs|₁
+
+    1+n<1+|xs|₂ : 1 + n < 1 + length xs
+    1+n<1+|xs|₂ = resp (λ y → suc n < y) refl 1+n<|l|₂
+
+    n<|xs|₂ : n < length xs
+    n<|xs|₂ = 1+m<1+n→m<n 1+n<1+|xs|₂
+
+    ind : lookup< xs n n<|xs|₁ ≡ lookup< xs n n<|xs|₂
+    ind = lookup<-irrelevance xs n n<|xs|₁ n<|xs|₂
+
+    proof = ind
+
+lookup<-index-irrelevance : {A : Set} → (l : List A) → (n₁ n₂ : ℕ) → n₁ ≡ n₂ → (n₁<|l| : n₁ < length l) → (n₂<|l| : n₂ < length l) → lookup< l n₁ n₁<|l| ≡ lookup< l n₂ n₂<|l|
+lookup<-index-irrelevance [] _ _ _ ()
+lookup<-index-irrelevance (x ∷ xs) 0 0 refl _ _ = refl
+lookup<-index-irrelevance l@(x ∷ xs) (suc n₁) (suc n₂) 1+n₁≡1+n₂ 1+n₁<|l| 1+n₂<|l| = l[1+n₁]≡l[1+n₂]
+  where
+    n₁≡n₂ : n₁ ≡ n₂
+    n₁≡n₂ = suc-injective 1+n₁≡1+n₂
+
+    1+n₁<1+|xs| : 1 + n₁ < 1 + length xs
+    1+n₁<1+|xs| = resp (λ y → 1 + n₁ < y) refl 1+n₁<|l|
+
+    n₁<|xs| : n₁ < length xs
+    n₁<|xs| = 1+m<1+n→m<n 1+n₁<1+|xs|
+
+    1+n₂<1+|xs| : 1 + n₂ < 1 + length xs
+    1+n₂<1+|xs| = resp (λ y → 1 + n₂ < y) refl 1+n₂<|l|
+
+    n₂<|xs| : n₂ < length xs
+    n₂<|xs| = 1+m<1+n→m<n 1+n₂<1+|xs|
+    
+    ind : lookup< xs n₁ n₁<|xs| ≡ lookup< xs n₂ n₂<|xs|
+    ind = lookup<-index-irrelevance xs n₁ n₂ n₁≡n₂ n₁<|xs| n₂<|xs|
+
+    l[1+n₁]≡l[1+n₂] = ind
+
+lookup<-map-lemma : {A B : Set} → (l : List A) → (n : ℕ) → (n<|l| : n < length l) → (f : A → B) → lookup< (map f l) n (index-map-lemma l n n<|l| f) ≡ f (lookup< l n n<|l|)
+lookup<-map-lemma [] _ ()
+lookup<-map-lemma l@(x ∷ xs) 0 0<|l| f = refl
+lookup<-map-lemma l@(x ∷ xs) (suc n) 1+n<|l|@(s≤s n<|xs|) f = map-f-l[1+n]≡f[l[1+n]]
+  where
+    1+n<|map-f-l| : 1 + n < length (map f l)
+    1+n<|map-f-l| = index-map-lemma l (1 + n) 1+n<|l| f
+    
+    |map-f-l|≡1+|map-f-xs| : length (map f l) ≡ 1 + length (map f xs)
+    |map-f-l|≡1+|map-f-xs| = refl
+    
+    1+n<1+|map-f-xs| : 1 + n < 1 + (length (map f xs))
+    1+n<1+|map-f-xs| = resp (λ y → suc n < y) |map-f-l|≡1+|map-f-xs| 1+n<|map-f-l|
+    
+    n<|map-f-xs| : n < length (map f xs)
+    n<|map-f-xs| = 1+m<1+n→m<n 1+n<1+|map-f-xs|
+
+    irrelevance1 : lookup< (map f l) (1 + n) (index-map-lemma l (1 + n) 1+n<|l| f) ≡ lookup< (map f l) (1 + n) 1+n<|map-f-l|
+    irrelevance1 = lookup<-irrelevance (map f l) (1 + n) (index-map-lemma l (1 + n) 1+n<|l| f) 1+n<|map-f-l|
+
+    ind : lookup< (map f xs) n (index-map-lemma xs n n<|xs| f) ≡ f (lookup< xs n n<|xs|)
+    ind = lookup<-map-lemma xs n n<|xs| f
+
+    map-f-l[1+n]≡fx∷map-f-xs[1+n] : lookup< (map f l) (1 + n) 1+n<|map-f-l| ≡ lookup< ((f x) ∷ (map f xs)) (1 + n) 1+n<|map-f-l|
+    map-f-l[1+n]≡fx∷map-f-xs[1+n] = refl
+
+    fx∷map-f-xs[1+n]≡map-f-xs[n] : lookup< ((f x) ∷ (map f xs)) (1 + n) 1+n<|map-f-l| ≡ lookup< (map f xs) n n<|map-f-xs|
+    fx∷map-f-xs[1+n]≡map-f-xs[n] = refl
+
+    irrelevance2 : lookup< (map f xs) n n<|map-f-xs| ≡ lookup< (map f xs) n (index-map-lemma xs n n<|xs| f)
+    irrelevance2 = lookup<-irrelevance (map f xs) n n<|map-f-xs| (index-map-lemma xs n n<|xs| f)
+
+    map-f-l[1+n]≡f[xs[n]] : lookup< (map f l) (1 + n) (index-map-lemma l (1 + n) 1+n<|l| f) ≡ f (lookup< xs n n<|xs|)
+    map-f-l[1+n]≡f[xs[n]] = ≡-trans irrelevance1 (≡-trans map-f-l[1+n]≡fx∷map-f-xs[1+n] (≡-trans fx∷map-f-xs[1+n]≡map-f-xs[n] (≡-trans irrelevance2 ind)))
+
+    xs[n]≡l[1+n]₁ : lookup< xs n n<|xs| ≡  lookup< l (1 + n) (index-cons xs x n n<|xs|)
+    xs[n]≡l[1+n]₁ = lookup<-cons-lemma xs x n n<|xs|
+
+    irrelevance3 : lookup< l (1 + n) (index-cons xs x n n<|xs|) ≡ lookup< l (1 + n) 1+n<|l|
+    irrelevance3 = lookup<-irrelevance l (1 + n) (index-cons xs x n n<|xs|) 1+n<|l|
+
+    xs[n]≡l[1+n] : lookup< xs n n<|xs| ≡ lookup< l (1 + n) 1+n<|l|
+    xs[n]≡l[1+n] = ≡-trans xs[n]≡l[1+n]₁ irrelevance3
+
+    f[xs[n]]≡f[l[1+n]] : f (lookup< xs n n<|xs|) ≡ f (lookup< l (1 + n) 1+n<|l|)
+    f[xs[n]]≡f[l[1+n]] = cong f xs[n]≡l[1+n]
+
+    map-f-l[1+n]≡f[l[1+n]] = ≡-trans map-f-l[1+n]≡f[xs[n]] f[xs[n]]≡f[l[1+n]]
+
+
+lookup<-++-lemma₁ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (n<|l₁| : n < length l₁) → lookup< l₁ n n<|l₁| ≡ lookup< (l₁ ++ l₂) n (index-++-lemma₁ l₁ l₂ n n<|l₁|)
+lookup<-++-lemma₁ [] _ _ ()
+lookup<-++-lemma₁ (x ∷ xs) _ 0 _ = refl
+lookup<-++-lemma₁ l₁@(x ∷ xs) l₂ (suc n) 1+n<|l₁| = l₁[1+n]≡l₁++l₂[1+n]
+  where
+    |l₁|≡1+|xs| : length l₁ ≡ 1 + length xs
+    |l₁|≡1+|xs| = refl
+
+    1+n<1+|xs| : 1 + n < 1 + length xs
+    1+n<1+|xs| = resp (λ y → 1 + n < y) (≡-sym |l₁|≡1+|xs|) 1+n<|l₁|
+
+    n<|xs| : n < length xs
+    n<|xs| =  1+m<1+n→m<n 1+n<1+|xs|
+
+    ind : lookup< xs n n<|xs| ≡ lookup< (xs ++ l₂) n (index-++-lemma₁ xs l₂ n n<|xs|)
+    ind = lookup<-++-lemma₁ xs l₂ n n<|xs|
+
+    l₁[1+n]≡xs[n] : lookup< l₁ (1 + n) 1+n<|l₁| ≡ lookup< xs n n<|xs|
+    l₁[1+n]≡xs[n] = refl
+
+    1+n<|l₁++l₂| : 1 + n < length (l₁ ++ l₂)
+    1+n<|l₁++l₂| = index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|
+
+    |l₁++l₂|≡1+|xs++l₂| : length (l₁ ++ l₂) ≡ 1 + length (xs ++ l₂)
+    |l₁++l₂|≡1+|xs++l₂| = refl
+
+    1+n<1+|xs++l₂| : 1 + n < 1 + length (xs ++ l₂)
+    1+n<1+|xs++l₂| = resp (λ y → 1 + n < y) (≡-sym |l₁++l₂|≡1+|xs++l₂|) 1+n<|l₁++l₂|
+
+    n<|xs++l₂| : n < length (xs ++ l₂)
+    n<|xs++l₂| = 1+m<1+n→m<n 1+n<1+|xs++l₂|
+
+    l₁++l₂[1+n]≡xs++l₂[n] : lookup< (l₁ ++ l₂) (1 + n) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|) ≡ lookup< (xs ++ l₂) n n<|xs++l₂|
+    l₁++l₂[1+n]≡xs++l₂[n] = refl
+
+    irrelevance : lookup< (xs ++ l₂) n n<|xs++l₂| ≡ lookup< (xs ++ l₂) n (index-++-lemma₁ xs l₂ n n<|xs|)
+    irrelevance = lookup<-irrelevance (xs ++ l₂) n n<|xs++l₂| (index-++-lemma₁ xs l₂ n n<|xs|)
+
+    l₁[1+n]≡l₁++l₂[1+n] : lookup< l₁ (1 + n) 1+n<|l₁| ≡ lookup< (l₁ ++ l₂) (1 + n) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|)
+    l₁[1+n]≡l₁++l₂[1+n] = ≡-trans l₁[1+n]≡xs[n] (≡-trans ind (≡-trans (≡-sym irrelevance) (≡-sym l₁++l₂[1+n]≡xs++l₂[n])))
+
+
+
+lookup<-++-lemma₂ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (n<|l₂| : n < length l₂) → lookup< l₂ n n<|l₂| ≡ lookup< (l₁ ++ l₂) ((length l₁) + n) (index-++-lemma₂ l₁ l₂ n n<|l₂|)
+lookup<-++-lemma₂ _ [] _ ()
+lookup<-++-lemma₂ [] (y ∷ ys) 0 _ = refl
+lookup<-++-lemma₂ [] l₂@(y ∷ ys) (suc n) 1+n<|l₂| = refl
+lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) 0 0<|l₂| = l₂[0]≡l₁++l₂[|l₁|+0]
+  where
+    |xs|+0<|xs++l₂| : ((length xs) + 0) < length (xs ++ l₂)
+    |xs|+0<|xs++l₂| = index-++-lemma₂ xs l₂ 0 0<|l₂|
+
+    |xs|<|xs++l₂| : (length xs) < length (xs ++ l₂)
+    |xs|<|xs++l₂| = resp (λ y → y < length (xs ++ l₂)) (+-identityʳ (length xs)) |xs|+0<|xs++l₂|
+    
+    l₂[0]≡xs++l₂[|xs|+0] : lookup< l₂ 0 0<|l₂| ≡ lookup< (xs ++ l₂) ((length xs) + 0) |xs|+0<|xs++l₂|
+    l₂[0]≡xs++l₂[|xs|+0] = lookup<-++-lemma₂ xs l₂ 0 0<|l₂|
+
+
+    1+|xs|+0<|l₁++l₂| : 1 + ((length xs) + 0) < length (l₁ ++ l₂)
+    1+|xs|+0<|l₁++l₂| = index-cons (xs ++ l₂) x ((length xs) + 0) |xs|+0<|xs++l₂|
+
+    |l₁|+0<|l₁++l₂| : (length l₁) + 0 < length (l₁ ++ l₂)
+    |l₁|+0<|l₁++l₂| = (index-++-lemma₂ l₁ l₂ 0 0<|l₂|)
+
+    xs++l₂[|xs|+0]≡l₁++l₂[1+|xs|+0] : lookup< (xs ++ l₂) ((length xs) + 0) |xs|+0<|xs++l₂| ≡ lookup< (l₁ ++ l₂) (1 + ((length xs) + 0)) 1+|xs|+0<|l₁++l₂|
+    xs++l₂[|xs|+0]≡l₁++l₂[1+|xs|+0] = lookup<-cons-lemma (xs ++ l₂) x ((length xs) + 0) |xs|+0<|xs++l₂|
+
+    l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0] :  lookup< (l₁ ++ l₂) (1 + ((length xs) + 0)) 1+|xs|+0<|l₁++l₂| ≡ lookup< (l₁ ++ l₂) ((length l₁) + 0) |l₁|+0<|l₁++l₂|
+    l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0] = lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + 0)) ((length l₁) + 0) (+-assoc 1 (length xs) 0) 1+|xs|+0<|l₁++l₂| |l₁|+0<|l₁++l₂|
+
+    l₂[0]≡l₁++l₂[|l₁|+0] = ≡-trans l₂[0]≡xs++l₂[|xs|+0] (≡-trans xs++l₂[|xs|+0]≡l₁++l₂[1+|xs|+0] l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0])
+lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂| = l₂[1+n]≡l₁++l₂[|l₁|+1+n]
+  where
+    |xs|+1+n<|xs++l₂| : (length xs) + (1 + n) < length (xs ++ l₂)
+    |xs|+1+n<|xs++l₂| = index-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
+    
+    l₂[1+n]≡xs++l₂[|xs|+1+n] : lookup< l₂ (1 + n) 1+n<|l₂| ≡ lookup< (xs ++ l₂) ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂|
+    l₂[1+n]≡xs++l₂[|xs|+1+n] = lookup<-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
+
+    1+|xs|+1+n<|l₁++l₂| : 1 + ((length xs) + (1 + n)) < length (l₁ ++ l₂)
+    1+|xs|+1+n<|l₁++l₂| = index-cons (xs ++ l₂) x ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂|
+
+    |l₁|+1+n<|l₁++l₂| : (length l₁) + (1 + n) < length (l₁ ++ l₂)
+    |l₁|+1+n<|l₁++l₂| = index-++-lemma₂ l₁ l₂ (1 + n) 1+n<|l₂|
+
+    xs++l₂[|xs|+1+n]≡l₁++l₂[1+|xs|+1+n] : lookup< (xs ++ l₂) ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂| ≡ lookup< (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) 1+|xs|+1+n<|l₁++l₂|
+    xs++l₂[|xs|+1+n]≡l₁++l₂[1+|xs|+1+n] = lookup<-cons-lemma (xs ++ l₂) x ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂|
+
+    l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] : lookup< (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) 1+|xs|+1+n<|l₁++l₂| ≡ lookup< (l₁ ++ l₂) ((length l₁) + (1 + n)) |l₁|+1+n<|l₁++l₂|
+    l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] = lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) ((length l₁) + (1 + n)) (+-assoc 1 (length xs) (1 + n)) 1+|xs|+1+n<|l₁++l₂| |l₁|+1+n<|l₁++l₂|
+    
+    l₂[1+n]≡l₁++l₂[|l₁|+1+n] = ≡-trans l₂[1+n]≡xs++l₂[|xs|+1+n] (≡-trans xs++l₂[|xs|+1+n]≡l₁++l₂[1+|xs|+1+n] l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n])
+
+
+𝟚^ : (n : ℕ) → List (Vec Bool n)
+𝟚^ 0 = [] ∷ []
+𝟚^ (suc n) = (map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n))
+
+|𝟚^n|≡2^n : (n : ℕ) → length (𝟚^ n) ≡ 2 ^ n
+|𝟚^n|≡2^n 0 = refl
+|𝟚^n|≡2^n (suc n) = |𝟚^[1+n]|≡2^[1+n]
+  where
+    ind : length (𝟚^ n) ≡ 2 ^ n
+    ind = |𝟚^n|≡2^n n
+
+    lemma1 : 𝟚^ (1 + n) ≡ (map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n))
+    lemma1 = refl
+
+    lemma2 : length (𝟚^ (1 + n)) ≡ length ((map (Data.Vec._∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n)))
+    lemma2 = cong length lemma1
+
+    lemma3 : length ((map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n))) ≡ length (map (_∷_ true) (𝟚^ n)) + length (map (_∷_ false) (𝟚^ n))
+    lemma3 = length-++ (map (_∷_ true) (𝟚^ n))
+
+    lemma-4-1 : length (map (_∷_ true) (𝟚^ n)) ≡ length (𝟚^ n)
+    lemma-4-1 = length-map (_∷_ true) (𝟚^ n)
+
+    
+    lemma4 : length (map (_∷_ true) (𝟚^ n)) + length (map (_∷_ false) (𝟚^ n)) ≡ length (𝟚^ n) + length ((map (_∷_ false) (𝟚^ n)))
+    lemma4 = cong (λ y → y + length (map (Data.Vec._∷_ false) (𝟚^ n))) lemma-4-1
+
+
+    lemma-5-1 : length (map (_∷_ false) (𝟚^ n)) ≡ length (𝟚^ n)
+    lemma-5-1 = length-map (_∷_ false) (𝟚^ n)
+
+    lemma5 : length (𝟚^ n) + length ((map (_∷_ false) (𝟚^ n))) ≡ length (𝟚^ n) + length (𝟚^ n)
+    lemma5 = cong (λ y → length (𝟚^ n) + y) lemma-5-1
+
+    
+    lemma6 : length (𝟚^ n) + length (𝟚^ n) ≡ 2 * (length (𝟚^ n))
+    lemma6 = x+x≡2x (length (𝟚^ n))
+
+    lemma7 : 2 * (length (𝟚^ n)) ≡ 2 * (2 ^ n)
+    lemma7 = cong (λ y → 2 * y) ind
+
+    lemma8 : 2 * (2 ^ n) ≡ 2 ^ (1 + n)
+    lemma8 = refl
+    
+    |𝟚^[1+n]|≡2^[1+n] = ≡-trans lemma2 (≡-trans lemma3 (≡-trans lemma4 (≡-trans lemma5 (≡-trans lemma6 (≡-trans lemma7 lemma8)))))
+
+
+
+𝟚^n-complete : {n : ℕ} → (v : Vec Bool n) → Σ[ i ∈ ℕ ] (Σ[ i<|l| ∈ i < length (𝟚^ n) ] (lookup< (𝟚^ n) i i<|l|) ≡ v)
+𝟚^n-complete {0} [] = 0 , ((s≤s z≤n) , refl)
+𝟚^n-complete {suc n} v@(true ∷ xs) = i , (i<|𝟚^1+n| , 𝟚^1+n[i]≡v)
+  where
+    ind : Σ[ i' ∈ ℕ ] (Σ[ i'<|𝟚^n| ∈ i' < length (𝟚^ n) ] (lookup< (𝟚^ n) i' i'<|𝟚^n|) ≡ xs)
+    ind = 𝟚^n-complete xs
+    i' = proj₁ ind
+    i'<|𝟚^n| = proj₁ (proj₂ ind)
+    𝟚^n[i']≡xs = proj₂ (proj₂ ind)
+
+    i'<|map-t-𝟚^n| : i' < length (map (_∷_ true) (𝟚^ n))
+    i'<|map-t-𝟚^n| = (index-map-lemma (𝟚^ n) i' i'<|𝟚^n| (_∷_ true))
+    
+    map-t-𝟚^n[i']≡t∷𝟚^n[i'] : lookup< (map (_∷_ true) (𝟚^ n)) i' i'<|map-t-𝟚^n| ≡ (true ∷ (lookup< (𝟚^ n) i' i'<|𝟚^n|))
+    map-t-𝟚^n[i']≡t∷𝟚^n[i'] = lookup<-map-lemma (𝟚^ n) i' i'<|𝟚^n| (_∷_ true)
+
+    t∷𝟚^n[i']≡v : (true ∷ (lookup< (𝟚^ n) i' i'<|𝟚^n|)) ≡ v
+    t∷𝟚^n[i']≡v = cong (_∷_ true) 𝟚^n[i']≡xs
+
+    map-t-𝟚^n[i']≡v : lookup< (map (_∷_ true) (𝟚^ n)) i' i'<|map-t-𝟚^n| ≡ v
+    map-t-𝟚^n[i']≡v = ≡-trans map-t-𝟚^n[i']≡t∷𝟚^n[i'] t∷𝟚^n[i']≡v
+
+    i'<|𝟚^1+n| : i' < length (𝟚^ (1 + n))
+    i'<|𝟚^1+n| = index-++-lemma₁ (map (_∷_ true) (𝟚^ n)) (map (_∷_ false) (𝟚^ n)) i' i'<|map-t-𝟚^n|
+
+    map-t-𝟚^n[i']≡𝟚^1+n[i'] : lookup< (map (_∷_ true) (𝟚^ n)) i' i'<|map-t-𝟚^n| ≡ lookup< (𝟚^ (1 + n)) i' i'<|𝟚^1+n|
+    map-t-𝟚^n[i']≡𝟚^1+n[i'] = lookup<-++-lemma₁ (map (_∷_ true) (𝟚^ n)) (map (_∷_ false) (𝟚^ n)) i' i'<|map-t-𝟚^n|
+    
+    i = i'
+    i<|𝟚^1+n| = i'<|𝟚^1+n|
+    
+    𝟚^1+n[i]≡v = ≡-trans (≡-sym map-t-𝟚^n[i']≡𝟚^1+n[i']) map-t-𝟚^n[i']≡v
+    
+𝟚^n-complete {suc n} v@(false ∷ xs) = i , (i<|𝟚^1+n| , 𝟚^1+n[i]≡v)
+  where
+    ind : Σ[ i' ∈ ℕ ] (Σ[ i'<|𝟚^n| ∈ i' < length (𝟚^ n) ] (lookup< (𝟚^ n) i' i'<|𝟚^n|) ≡ xs)
+    ind = 𝟚^n-complete xs
+    
+    i' = proj₁ ind
+    i'<|𝟚^n| = proj₁ (proj₂ ind)
+    𝟚^n[i']≡xs = proj₂ (proj₂ ind)
+
+    i'<|map-f-𝟚^n| : i' < length (map (_∷_ false) (𝟚^ n))
+    i'<|map-f-𝟚^n| = (index-map-lemma (𝟚^ n) i' i'<|𝟚^n| (_∷_ false))
+    
+    map-f-𝟚^n[i']≡f∷𝟚^n[i'] : lookup< (map (_∷_ false) (𝟚^ n)) i' i'<|map-f-𝟚^n| ≡ (false ∷ (lookup< (𝟚^ n) i' i'<|𝟚^n|))
+    map-f-𝟚^n[i']≡f∷𝟚^n[i'] = lookup<-map-lemma (𝟚^ n) i' i'<|𝟚^n| (_∷_ false)
+
+    f∷𝟚^n[i']≡v : (false ∷ (lookup< (𝟚^ n) i' i'<|𝟚^n|)) ≡ v
+    f∷𝟚^n[i']≡v = cong (_∷_ false) 𝟚^n[i']≡xs
+
+    map-f-𝟚^n[i']≡v : lookup< (map (_∷_ false) (𝟚^ n)) i' i'<|map-f-𝟚^n| ≡ v
+    map-f-𝟚^n[i']≡v = ≡-trans map-f-𝟚^n[i']≡f∷𝟚^n[i'] f∷𝟚^n[i']≡v
+    
+    i = length (map (_∷_ true) (𝟚^ n)) + i'
+    
+    i<|𝟚^1+n| : i < length (𝟚^ (1 + n))
+    i<|𝟚^1+n| = index-++-lemma₂ (map (_∷_ true) (𝟚^ n)) (map (_∷_ false) (𝟚^ n)) i' i'<|map-f-𝟚^n|
+
+    map-f-𝟚^n[i']≡𝟚^1+n[i] : lookup< (map (_∷_ false) (𝟚^ n)) i' i'<|map-f-𝟚^n| ≡ lookup< (𝟚^ (1 + n)) i i<|𝟚^1+n|
+    map-f-𝟚^n[i']≡𝟚^1+n[i] = lookup<-++-lemma₂ (map (_∷_ true) (𝟚^ n)) (map (_∷_ false) (𝟚^ n)) i' i'<|map-f-𝟚^n|
+
+    𝟚^1+n[i]≡v = ≡-trans (≡-sym map-f-𝟚^n[i']≡𝟚^1+n[i]) map-f-𝟚^n[i']≡v
+
