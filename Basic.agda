@@ -864,3 +864,73 @@ lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂| = l₂[1+
 
     𝟚^1+n[i]≡v = ≡-trans (≡-sym map-f-𝟚^n[i']≡𝟚^1+n[i]) map-f-𝟚^n[i']≡v
 
+
+Vec→List : {A : Set} {n : ℕ} → Vec A n → List A
+Vec→List [] = []
+Vec→List (x ∷ xs) = x ∷ (Vec→List xs)
+
+Vec→List-preserves-length : {A : Set} {n : ℕ} → (v : Vec A n) → length (Vec→List v) ≡ n
+Vec→List-preserves-length [] = refl
+Vec→List-preserves-length {n = (suc n)} (x ∷ xs) = |x∷xs|≡1+n
+  where
+    |xs|≡n : length (Vec→List xs) ≡ n
+    |xs|≡n = Vec→List-preserves-length xs
+    
+    lemma : Vec→List (x ∷ xs) ≡ x ∷ (Vec→List xs)
+    lemma = refl
+
+    lemma2 : length (Vec→List (x ∷ xs)) ≡ 1 + length (Vec→List xs)
+    lemma2 = cong length lemma
+
+    lemma3 : 1 + length (Vec→List xs) ≡ 1 + n
+    lemma3 = cong (λ y → 1 + y) |xs|≡n
+    
+    |x∷xs|≡1+n = ≡-trans lemma2 lemma3
+
+
+List→Vec-length : {A : Set} {n : ℕ} → (l : List A) → length l ≡ n → Vec A n
+List→Vec-length {A} {0} [] _ = []
+List→Vec-length {A} {suc n} l@(x ∷ xs) |l|≡1+n = x ∷ (List→Vec-length xs (suc-injective |l|≡1+n))
+
+List→Vec→List : {A : Set} {n : ℕ} → (l : List A) → (|l|≡n : length l ≡ n) → Vec→List (List→Vec-length l |l|≡n) ≡ l
+List→Vec→List {A} {0} [] _ = refl
+List→Vec→List {A} {suc n} l@(x ∷ xs) |l|≡1+n = proof
+  where
+    |xs|≡n : length xs ≡ n
+    |xs|≡n = suc-injective |l|≡1+n
+
+    lvl-xs≡xs : Vec→List (List→Vec-length xs |xs|≡n) ≡ xs
+    lvl-xs≡xs = List→Vec→List xs |xs|≡n
+
+    lv-l≡x∷lv-xs : List→Vec-length l |l|≡1+n ≡ x ∷ (List→Vec-length xs |xs|≡n)
+    lv-l≡x∷lv-xs = refl
+
+    vl-x∷lv-xs≡x∷lvl-xs : Vec→List (x ∷ (List→Vec-length xs |xs|≡n)) ≡ x ∷ (Vec→List (List→Vec-length xs |xs|≡n))
+    vl-x∷lv-xs≡x∷lvl-xs = refl
+
+    x∷lvl-xs≡l : x ∷ (Vec→List (List→Vec-length xs |xs|≡n)) ≡ l
+    x∷lvl-xs≡l = cong (_∷_ x) lvl-xs≡xs
+
+    lvl-l≡vl-x∷lv-xs : Vec→List (List→Vec-length l |l|≡1+n) ≡ Vec→List (x ∷ (List→Vec-length xs |xs|≡n))
+    lvl-l≡vl-x∷lv-xs = cong Vec→List lv-l≡x∷lv-xs
+    
+    proof = ≡-trans lvl-l≡vl-x∷lv-xs (≡-trans vl-x∷lv-xs≡x∷lvl-xs x∷lvl-xs≡l)
+
+list-max-is-max2 : (l : List ℕ) → (i : ℕ) → (i<|l| : i < length l) → list-max l ≥ lookup< l i i<|l|
+list-max-is-max2 [] _ ()
+list-max-is-max2 l@(x ∷ xs) 0 0<|l| = m⊔n≥m x (list-max xs)
+list-max-is-max2 l@(x ∷ xs) (suc n) (s≤s n<|xs|) = proof
+  where
+    ind : list-max xs ≥ lookup< xs n n<|xs|
+    ind = list-max-is-max2 xs n n<|xs|
+
+    l[1+n]≡xs[n] : lookup< l (1 + n) (s≤s n<|xs|) ≡ lookup< xs n n<|xs|
+    l[1+n]≡xs[n] = refl
+
+    max-l≥max-xs : list-max l ≥ list-max xs
+    max-l≥max-xs = m⊔n≥n x (list-max xs)
+
+    max-l≥xs[n] : list-max l ≥ lookup< xs n n<|xs|
+    max-l≥xs[n] = ≤-trans ind max-l≥max-xs
+    
+    proof = resp (λ y → list-max l ≥ y) (≡-sym l[1+n]≡xs[n]) max-l≥xs[n]

@@ -337,3 +337,131 @@ pidgeonhole-encoding f appearances (suc m) = n , proof
             x>l[i] = <-transʳ n≥l[i] x>n
             contradiction =  >⇒≢ x>l[i] (≡-sym l[i]≡x)
         |fx|>1+m =  ≤∧≢⇒< |fx|≥1+m (≢-sym |fx|≢1+m)
+
+pidgeonhole-encoding2 :
+  (f : ℕ → List Bool) →
+  Bijective f →
+  (m : ℕ) → Σ[ n ∈ ℕ ] ((x : ℕ) → (x > n) → ((length (f x)) > m))
+pidgeonhole-encoding2 f (f-inj , f-surj) 0 = n , proof
+  where
+    n = proj₁ (f-surj [])
+    fn≡[] = proj₂ (f-surj [])
+    
+    proof : (x : ℕ) → (x > n) → length (f x) > 0
+    proof x x>n = |fx|>0
+      where
+        |fx|≢0 : length (f x) ≢ 0
+        |fx|≢0 |fx|≡0 = contradiction
+          where
+            fx≡[]⊎[a∷as] : ((f x) ≡ []) ⊎ (Σ[ a ∈ Bool ] (Σ[ as ∈ List Bool ] ((f x) ≡ (a ∷ as))))
+            fx≡[]⊎[a∷as] = List-LEM (f x)
+
+            fx≢[a∷as] : ¬ (Σ[ a ∈ Bool ] (Σ[ as ∈ List Bool ] ((f x) ≡ (a ∷ as))))
+            fx≢[a∷as] (a , (as , fx≡a∷as)) = subcontradiction
+              where
+                |fx|≡1+|as| : length (f x) ≡ suc (length as)
+                |fx|≡1+|as| = cong length fx≡a∷as
+
+                subcontradiction = 1+n≢0 (≡-trans (≡-sym |fx|≡1+|as|) |fx|≡0)
+
+            fx≡[] : (f x) ≡ []
+            fx≡[] = process-of-elimination-r fx≡[]⊎[a∷as] fx≢[a∷as]
+
+            fx≡fn : (f x) ≡ (f n)
+            fx≡fn = ≡-trans fx≡[] (≡-sym fn≡[])
+
+            x≡n : x ≡ n
+            x≡n = f-inj fx≡fn
+            
+            contradiction = >⇒≢ x>n x≡n
+        |fx|>0 =  n≢0⇒n>0 |fx|≢0
+pidgeonhole-encoding2 f (f-inj , f-surj) (suc m) = n , proof
+  where
+    ind :  Σ[ n' ∈ ℕ ] ((x : ℕ) → (x > n') → ((length (f x)) > m))
+    ind = pidgeonhole-encoding2 f (f-inj , f-surj) m
+
+    n' = proj₁ ind
+
+    𝟚^1+m : List (Vec Bool (1 + m))
+    𝟚^1+m = 𝟚^ (1 + m)
+
+    𝟚'^1+m : List (List Bool)
+    𝟚'^1+m = map Vec→List 𝟚^1+m
+
+    𝟚'^1+m-complete : (l : List Bool) → length l ≡ 1 + m → Σ[ i ∈ ℕ ] (Σ[ i<|𝟚'^1+m| ∈ i < length 𝟚'^1+m ] (lookup< 𝟚'^1+m i i<|𝟚'^1+m| ≡ l))
+    𝟚'^1+m-complete l |l|≡1+m = i , (i<|𝟚'^1+m| , 𝟚'^1+m[i]≡l)
+      where
+        v = List→Vec-length l |l|≡1+m
+        lemma : Σ[ i' ∈ ℕ ] (Σ[ i'<|𝟚^1+m| ∈ i' < length 𝟚^1+m ] (lookup< 𝟚^1+m i' i'<|𝟚^1+m| ≡ v))
+        lemma = 𝟚^n-complete v
+
+        i' = proj₁ lemma
+        i'<|𝟚^1+m| = proj₁ (proj₂ lemma)
+        𝟚^1+m[i']≡v = proj₂ (proj₂ lemma)
+        
+        i = i'
+        i<|𝟚'^1+m| = index-map-lemma 𝟚^1+m i' i'<|𝟚^1+m| Vec→List
+
+        𝟚'^1+m[i]≡Vec→List-𝟚^1+m[i] : lookup< 𝟚'^1+m i i<|𝟚'^1+m| ≡ Vec→List (lookup< 𝟚^1+m i i'<|𝟚^1+m|)
+        𝟚'^1+m[i]≡Vec→List-𝟚^1+m[i] = lookup<-map-lemma 𝟚^1+m i i'<|𝟚^1+m| Vec→List
+
+        Vec→List-𝟚^1+m[i]≡Vec→List-v : Vec→List (lookup< 𝟚^1+m i i'<|𝟚^1+m|) ≡ Vec→List v
+        Vec→List-𝟚^1+m[i]≡Vec→List-v = cong Vec→List 𝟚^1+m[i']≡v
+
+        Vec→List-v≡l : Vec→List v ≡ l
+        Vec→List-v≡l = List→Vec→List l |l|≡1+m
+
+        𝟚'^1+m[i]≡l = ≡-trans 𝟚'^1+m[i]≡Vec→List-𝟚^1+m[i] (≡-trans Vec→List-𝟚^1+m[i]≡Vec→List-v Vec→List-v≡l)
+
+    appearances : List ℕ
+    appearances = map (proj₁ ∘ f-surj) 𝟚'^1+m
+
+    appearances-complete : (x : ℕ) → length (f x) ≡ 1 + m → Σ[ i ∈ ℕ ] (Σ[ i<|app| ∈ i < length appearances ] (lookup< appearances i i<|app| ≡ x))
+    appearances-complete x |fx|≡1+m = i , (i<|app| , app[i]≡x)
+      where
+        lemma : Σ[ i' ∈ ℕ ] (Σ[ i'<|𝟚'^1+m| ∈ i' < length 𝟚'^1+m ] (lookup< 𝟚'^1+m i' i'<|𝟚'^1+m| ≡ (f x)))
+        lemma = 𝟚'^1+m-complete (f x) |fx|≡1+m
+        i' = proj₁ lemma
+        i'<|𝟚'^1+m| = proj₁ (proj₂ lemma)
+        𝟚'^1+m[i']≡fx = proj₂ (proj₂ lemma)
+        
+        i = i'
+        i<|app| = index-map-lemma 𝟚'^1+m i' i'<|𝟚'^1+m| (proj₁ ∘ f-surj)
+
+        app[i]≡π₁-surj-𝟚'^1+m[i] : lookup< appearances i i<|app| ≡ (proj₁ ∘ f-surj) (lookup< 𝟚'^1+m i' i'<|𝟚'^1+m|)
+        app[i]≡π₁-surj-𝟚'^1+m[i] = lookup<-map-lemma 𝟚'^1+m i' i'<|𝟚'^1+m| (proj₁ ∘ f-surj)
+
+        π₁-surj-𝟚'^1+m[i]≡π₁-surj-fx : (proj₁ ∘ f-surj) (lookup< 𝟚'^1+m i' i'<|𝟚'^1+m|) ≡ (proj₁ ∘ f-surj) (f x)
+        π₁-surj-𝟚'^1+m[i]≡π₁-surj-fx = cong (proj₁ ∘ f-surj) 𝟚'^1+m[i']≡fx
+        
+        f-π₁-surj-fx≡fx : f ((proj₁ ∘ f-surj) (f x)) ≡ f x
+        f-π₁-surj-fx≡fx = (proj₂ ∘ f-surj) (f x)
+
+        π₁-surj-fx≡x : (proj₁ ∘ f-surj) (f x) ≡ x
+        π₁-surj-fx≡x = f-inj f-π₁-surj-fx≡fx
+        
+        app[i]≡x = ≡-trans app[i]≡π₁-surj-𝟚'^1+m[i] (≡-trans π₁-surj-𝟚'^1+m[i]≡π₁-surj-fx π₁-surj-fx≡x)
+    
+    n = max n' (list-max appearances)
+    proof : (x : ℕ) → x > n → length (f x) > 1 + m
+    proof x x>n = |fx|>1+m
+      where
+        n≥n' = m⊔n≥m n' (list-max appearances)
+        x>n' = <-transʳ n≥n' x>n
+        n≥lmax = m⊔n≥n n' (list-max appearances)
+        x>lmax = <-transʳ n≥lmax x>n
+        |fx|>m = (proj₂ ind) x x>n'
+        |fx|≥1+m = |fx|>m
+        |fx|≢1+m : length (f x) ≢ 1 + m
+        |fx|≢1+m |fx|≡1+m = contradiction
+          where
+            lemma :  Σ[ i ∈ ℕ ] (Σ[ i<|app| ∈ i < length appearances ] (lookup< appearances i i<|app| ≡ x))
+            lemma = appearances-complete x |fx|≡1+m
+            i = proj₁ lemma
+            i<|app| = proj₁ (proj₂ lemma)
+            app[i]≡x = proj₂ (proj₂ lemma)
+            lmax≥app[i] : (list-max appearances) ≥ (lookup< appearances i i<|app|)
+            lmax≥app[i] = list-max-is-max2 appearances i i<|app|
+            x>app[i] = <-transʳ lmax≥app[i] x>lmax
+            contradiction =  >⇒≢ x>app[i] (≡-sym app[i]≡x)
+        |fx|>1+m =  ≤∧≢⇒< |fx|≥1+m (≢-sym |fx|≢1+m)
