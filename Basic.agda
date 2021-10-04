@@ -352,15 +352,10 @@ min-Nat : (ℕ → Set) → ℕ → Set
 min-Nat P n = (P n) × ((m : ℕ) → P m → n ≤ m)
 
 min-Nat-unique : (P : ℕ → Set) → {x y : ℕ} → min-Nat P x → min-Nat P y → x ≡ y
-min-Nat-unique P {x} {y} (Px , hyp-x) (Py , hyp-y) = proof
+min-Nat-unique P {x} {y} (Px , hyp-x) (Py , hyp-y) = ≤-antisym x≤y y≤x
   where
-    x≤y : x ≤ y
     x≤y = hyp-x y Py
-
-    y≤x : y ≤ x
     y≤x = hyp-y x Px
-    
-    proof = ≤-antisym x≤y y≤x
 
 
 demorgan-∨ : {A B : Set} → ¬ (A ⊎ B) → (¬ A) × (¬ B)
@@ -466,7 +461,7 @@ list-max (x ∷ xs) = max x (list-max xs)
 list-max-is-max : (l : List ℕ) → (i : Fin (length l)) → (list-max l) ≥ (lookup l i)
 list-max-is-max [] ()
 list-max-is-max (x ∷ xs) zero = resp (λ y → (list-max (x ∷ xs)) ≥ y) refl (m⊔n≥m x (list-max xs))
-list-max-is-max (x ∷ xs) (suc i) = proof
+list-max-is-max (x ∷ xs) (suc i) = ≤-trans lmax-xs≥x∷xs[i+1] lmax-x-xs≥lmax-xs
   where
     ind : (list-max xs) ≥ (lookup xs i)
     ind = list-max-is-max xs i
@@ -477,22 +472,12 @@ list-max-is-max (x ∷ xs) (suc i) = proof
     lmax-xs≥x∷xs[i+1] : (list-max xs) ≥ (lookup (x ∷ xs) (suc i))
     lmax-xs≥x∷xs[i+1] = resp (λ y → (list-max xs) ≥ y) refl ind
 
-    proof = ≤-trans lmax-xs≥x∷xs[i+1] lmax-x-xs≥lmax-xs
-
-
 x+x≡2x : (x : ℕ) → x + x ≡ 2 * x
-x+x≡2x x = proof
-  where
-    x+x≡[x+x]+0 : x + x ≡ (x + x) + 0
-    x+x≡[x+x]+0 = ≡-sym (+-identityʳ (x + x))
-
-    [x+x]+0≡x+x+0 : (x + x) + 0 ≡ x + (x + 0)
-    [x+x]+0≡x+x+0 = +-assoc x x 0
-
-    x+x+0≡2*x : x + (x + 0) ≡ 2 * x
-    x+x+0≡2*x = refl
-    
-    proof = ≡-trans x+x≡[x+x]+0 (≡-trans [x+x]+0≡x+x+0 x+x+0≡2*x)
+x+x≡2x x =
+  x + x        ≡⟨ ≡-sym (+-identityʳ (x + x)) ⟩
+  (x + x) + 0  ≡⟨ +-assoc x x 0 ⟩
+  2 * x        ∎
+    where open PropEq.≡-Reasoning
 
 
 Fin-finite : (x : ℕ) → Σ[ f ∈ ((Fin x) → (Fin x)) ] ((n : Fin x) → Σ[ i ∈ Fin x ] ((f i) ≡ n))
@@ -515,33 +500,11 @@ lookupℕ (x ∷ xs) (suc n) = lookupℕ xs n
 lookupℕ-end : {A : Set} → List A → ℕ → Maybe A
 lookupℕ-end l n = lookupℕ (reverse l) n
 
-{-
-pushback-preserves-lookupℕ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (a : A) → lookupℕ l₁ n ≡ just a → lookupℕ (l₁ ++ l₂) ≡ just a
-pushback-preserves-lookupℕ {A} l₁ l₂ n a l₁[n]≡a = l₁++l₂[n]≡a
-  where
-    
-    l₁++l₂[n]≡a
--}
-
-{-
-∷-preserves-lookupℕ-end : {A : Set} → (x : A) → (l : List A) → (n : ℕ) → (a : A) → lookupℕ-end l n ≡ just a → lookupℕ-end (x ∷ l) n ≡ just a
-∷-preserves-lookupℕ-end {A} x l n a l[n]≡a = x∷l[n]≡a
-  where
-    x∷l[n]≡a
--}
-
-1+m<1+n→m<n : {m n : ℕ} → (suc m) < (suc n) → m < n
-1+m<1+n→m<n (s≤s m<n) = m<n
 
 
 +ₗ-preserves-< : {m n : ℕ} → (x : ℕ) → m < n → (x + m) < (x + n)
-+ₗ-preserves-< {m} {n} 0 m<n = m<n
-+ₗ-preserves-< {m} {n} (suc x) m<n = 1+x+m<1+x+n
-  where
-    x+m<x+n : (x + m) < (x + n)
-    x+m<x+n = +ₗ-preserves-< {m} {n} x m<n
-    
-    1+x+m<1+x+n = s≤s x+m<x+n
++ₗ-preserves-< 0 m<n = m<n
++ₗ-preserves-< (suc x) m<n = s≤s (+ₗ-preserves-< x m<n)
 
 +ᵣ-preserves-< : {m n : ℕ} → (x : ℕ) → m < n → (m + x) < (n + x)
 +ᵣ-preserves-< {m} {n} x m<n = m+x<n+x
@@ -561,15 +524,7 @@ lookup< [] _ ()
 lookup< (x ∷ xs) 0 _ = x
 lookup< l@(x ∷ xs) (suc n) (s≤s n<|xs|) = lookup< xs n n<|xs|
 
-{-
-index-cons : {A : Set} → (l : List A) → (x : A) → (n : ℕ) → n < length l → (1 + n) < length (x ∷ l)
-index-cons {A} l x n n<|l| = s≤s n<|l|
--}
 
-{-
-index-map-lemma : {A B : Set} → (l : List A) → (n : ℕ) → n < length l → (f : A → B) → n < length (map f l)
-index-map-lemma l n n<|l| f = resp (λ y → n < y) (≡-sym (length-map f l)) n<|l|
--}
 index-map-lemma : {A B : Set} → (l : List A) → (n : ℕ) → n < length l → (f : A → B) → n < length (map f l)
 index-map-lemma [] n ()
 index-map-lemma (x ∷ xs) 0 (s≤s z≤n) f = (s≤s z≤n)
@@ -602,10 +557,6 @@ index-++-lemma₂ l₁ l₂ n n<|l₂| = |l₁|+n<|l₁++l₂|
     
     |l₁|+n<|l₁++l₂| = resp (λ y → (length l₁) + n < y) |l₁|+|l₂|≡|l₁++l₂| |l₁|+n<|l₁|+|l₂|
 
-{-
-lookup<-cons-lemma : {A : Set} → (l : List A) → (x : A) → (n : ℕ) → (n<|l| : n < length l) → lookup< l n n<|l| ≡ lookup< (x ∷ l) (1 + n) (s≤s n<|l|)
-lookup<-cons-lemma l x n n<|l| = refl
--}
 
 lookup<-irrelevance : {A : Set} → (l : List A) → (n : ℕ) → (n<|l|₁ n<|l|₂ : n < length l) → lookup< l n n<|l|₁ ≡ lookup< l n n<|l|₂
 lookup<-irrelevance [] 0 ()
@@ -693,46 +644,43 @@ lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂|@(s≤s n<
 
 |𝟚^n|≡2^n : (n : ℕ) → length (𝟚^ n) ≡ 2 ^ n
 |𝟚^n|≡2^n 0 = refl
-|𝟚^n|≡2^n (suc n) = |𝟚^[1+n]|≡2^[1+n]
-  where
-    ind : length (𝟚^ n) ≡ 2 ^ n
-    ind = |𝟚^n|≡2^n n
+|𝟚^n|≡2^n (suc n) = 
+  length (𝟚^ (1 + n))
+  
+      ≡⟨ refl ⟩
+      
+  length ((map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n)))
+  
+      ≡⟨ length-++ (map (_∷_ true) (𝟚^ n)) ⟩
+      
+  length (map (_∷_ true) (𝟚^ n)) + length (map (_∷_ false) (𝟚^ n))
+  
+      ≡⟨ cong (λ y → y + length (map (Data.Vec._∷_ false) (𝟚^ n))) (length-map (_∷_ true) (𝟚^ n)) ⟩
+      
+  length (𝟚^ n) + length ((map (_∷_ false) (𝟚^ n)))
+  
+      ≡⟨ cong (λ y → length (𝟚^ n) + y) (length-map (_∷_ false) (𝟚^ n)) ⟩
+      
+  length (𝟚^ n) + length (𝟚^ n)
+  
+      ≡⟨ x+x≡2x (length (𝟚^ n)) ⟩
+      
+  2 * (length (𝟚^ n))
+  
+      ≡⟨ cong (λ y → 2 * y) ind ⟩
+      
+  2 * (2 ^ n)
+  
+      ≡⟨ refl ⟩
+      
+  2 ^ (1 + n)
+  
+      ∎
+    where
+      open PropEq.≡-Reasoning
 
-    lemma1 : 𝟚^ (1 + n) ≡ (map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n))
-    lemma1 = refl
-
-    lemma2 : length (𝟚^ (1 + n)) ≡ length ((map (Data.Vec._∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n)))
-    lemma2 = cong length lemma1
-
-    lemma3 : length ((map (_∷_ true) (𝟚^ n)) ++ (map (_∷_ false) (𝟚^ n))) ≡ length (map (_∷_ true) (𝟚^ n)) + length (map (_∷_ false) (𝟚^ n))
-    lemma3 = length-++ (map (_∷_ true) (𝟚^ n))
-
-    lemma-4-1 : length (map (_∷_ true) (𝟚^ n)) ≡ length (𝟚^ n)
-    lemma-4-1 = length-map (_∷_ true) (𝟚^ n)
-
-    
-    lemma4 : length (map (_∷_ true) (𝟚^ n)) + length (map (_∷_ false) (𝟚^ n)) ≡ length (𝟚^ n) + length ((map (_∷_ false) (𝟚^ n)))
-    lemma4 = cong (λ y → y + length (map (Data.Vec._∷_ false) (𝟚^ n))) lemma-4-1
-
-
-    lemma-5-1 : length (map (_∷_ false) (𝟚^ n)) ≡ length (𝟚^ n)
-    lemma-5-1 = length-map (_∷_ false) (𝟚^ n)
-
-    lemma5 : length (𝟚^ n) + length ((map (_∷_ false) (𝟚^ n))) ≡ length (𝟚^ n) + length (𝟚^ n)
-    lemma5 = cong (λ y → length (𝟚^ n) + y) lemma-5-1
-
-    
-    lemma6 : length (𝟚^ n) + length (𝟚^ n) ≡ 2 * (length (𝟚^ n))
-    lemma6 = x+x≡2x (length (𝟚^ n))
-
-    lemma7 : 2 * (length (𝟚^ n)) ≡ 2 * (2 ^ n)
-    lemma7 = cong (λ y → 2 * y) ind
-
-    lemma8 : 2 * (2 ^ n) ≡ 2 ^ (1 + n)
-    lemma8 = refl
-    
-    |𝟚^[1+n]|≡2^[1+n] = ≡-trans lemma2 (≡-trans lemma3 (≡-trans lemma4 (≡-trans lemma5 (≡-trans lemma6 (≡-trans lemma7 lemma8)))))
-
+      ind : length (𝟚^ n) ≡ 2 ^ n
+      ind = |𝟚^n|≡2^n n
 
 
 𝟚^n-complete : {n : ℕ} → (v : Vec Bool n) → Σ[ i ∈ ℕ ] (Σ[ i<|l| ∈ i < length (𝟚^ n) ] (lookup< (𝟚^ n) i i<|l|) ≡ v)
@@ -806,22 +754,7 @@ Vec→List (x ∷ xs) = x ∷ (Vec→List xs)
 
 Vec→List-preserves-length : {A : Set} {n : ℕ} → (v : Vec A n) → length (Vec→List v) ≡ n
 Vec→List-preserves-length [] = refl
-Vec→List-preserves-length {n = (suc n)} (x ∷ xs) = |x∷xs|≡1+n
-  where
-    |xs|≡n : length (Vec→List xs) ≡ n
-    |xs|≡n = Vec→List-preserves-length xs
-    
-    lemma : Vec→List (x ∷ xs) ≡ x ∷ (Vec→List xs)
-    lemma = refl
-
-    lemma2 : length (Vec→List (x ∷ xs)) ≡ 1 + length (Vec→List xs)
-    lemma2 = cong length lemma
-
-    lemma3 : 1 + length (Vec→List xs) ≡ 1 + n
-    lemma3 = cong (λ y → 1 + y) |xs|≡n
-    
-    |x∷xs|≡1+n = ≡-trans lemma2 lemma3
-
+Vec→List-preserves-length {n = (suc n)} (x ∷ xs) = cong suc (Vec→List-preserves-length xs)
 
 List→Vec-length : {A : Set} {n : ℕ} → (l : List A) → length l ≡ n → Vec A n
 List→Vec-length {A} {0} [] _ = []
@@ -829,46 +762,21 @@ List→Vec-length {A} {suc n} l@(x ∷ xs) |l|≡1+n = x ∷ (List→Vec-length 
 
 List→Vec→List : {A : Set} {n : ℕ} → (l : List A) → (|l|≡n : length l ≡ n) → Vec→List (List→Vec-length l |l|≡n) ≡ l
 List→Vec→List {A} {0} [] _ = refl
-List→Vec→List {A} {suc n} l@(x ∷ xs) |l|≡1+n = proof
-  where
-    |xs|≡n : length xs ≡ n
-    |xs|≡n = suc-injective |l|≡1+n
-
-    lvl-xs≡xs : Vec→List (List→Vec-length xs |xs|≡n) ≡ xs
-    lvl-xs≡xs = List→Vec→List xs |xs|≡n
-
-    lv-l≡x∷lv-xs : List→Vec-length l |l|≡1+n ≡ x ∷ (List→Vec-length xs |xs|≡n)
-    lv-l≡x∷lv-xs = refl
-
-    vl-x∷lv-xs≡x∷lvl-xs : Vec→List (x ∷ (List→Vec-length xs |xs|≡n)) ≡ x ∷ (Vec→List (List→Vec-length xs |xs|≡n))
-    vl-x∷lv-xs≡x∷lvl-xs = refl
-
-    x∷lvl-xs≡l : x ∷ (Vec→List (List→Vec-length xs |xs|≡n)) ≡ l
-    x∷lvl-xs≡l = cong (_∷_ x) lvl-xs≡xs
-
-    lvl-l≡vl-x∷lv-xs : Vec→List (List→Vec-length l |l|≡1+n) ≡ Vec→List (x ∷ (List→Vec-length xs |xs|≡n))
-    lvl-l≡vl-x∷lv-xs = cong Vec→List lv-l≡x∷lv-xs
-    
-    proof = ≡-trans lvl-l≡vl-x∷lv-xs (≡-trans vl-x∷lv-xs≡x∷lvl-xs x∷lvl-xs≡l)
+List→Vec→List {A} {suc n} l@(x ∷ xs) |l|≡1+n = cong (_∷_ x) (List→Vec→List xs (suc-injective |l|≡1+n))
 
 list-max-is-max2 : (l : List ℕ) → (i : ℕ) → (i<|l| : i < length l) → list-max l ≥ lookup< l i i<|l|
 list-max-is-max2 [] _ ()
 list-max-is-max2 l@(x ∷ xs) 0 0<|l| = m⊔n≥m x (list-max xs)
-list-max-is-max2 l@(x ∷ xs) (suc n) (s≤s n<|xs|) = proof
+list-max-is-max2 l@(x ∷ xs) (suc n) (s≤s n<|xs|) = resp (λ y → list-max l ≥ y) {x = lookup< xs n n<|xs|} refl max-l≥xs[n]
   where
     ind : list-max xs ≥ lookup< xs n n<|xs|
     ind = list-max-is-max2 xs n n<|xs|
-
-    l[1+n]≡xs[n] : lookup< l (1 + n) (s≤s n<|xs|) ≡ lookup< xs n n<|xs|
-    l[1+n]≡xs[n] = refl
 
     max-l≥max-xs : list-max l ≥ list-max xs
     max-l≥max-xs = m⊔n≥n x (list-max xs)
 
     max-l≥xs[n] : list-max l ≥ lookup< xs n n<|xs|
     max-l≥xs[n] = ≤-trans ind max-l≥max-xs
-    
-    proof = resp (λ y → list-max l ≥ y) (≡-sym l[1+n]≡xs[n]) max-l≥xs[n]
 
 
 Sym→Prop→Trans :
