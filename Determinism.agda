@@ -106,4 +106,6 @@ TODO:
 * randomness
 * information
 * indeterminism
+* locality
+* realism
 -}

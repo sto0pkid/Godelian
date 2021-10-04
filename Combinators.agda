@@ -317,6 +317,7 @@ TODO:
 * string parser
 * arbitrary reductions
 * normal forms
+* translation between combinatory logic and UTLC
 -}
 
 {-
