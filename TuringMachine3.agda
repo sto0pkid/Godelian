@@ -2,6 +2,10 @@ module TuringMachine3 where
 
 open import Basic hiding (raise) renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM ; Fin-raise' to raise)
 
+{-
+TODO: offload the TM descriptions into some standard file format
+-}
+
 TM : (n m : Nat) → Set
 TM n m = (Fin n) × (Fin m) → Maybe ((Fin n) × ((Fin m) × Bool))
 
@@ -10,6 +14,10 @@ TM-0,m m (() , _)
 
 TM-0,0 : TM 0 0
 TM-0,0 = TM-0,m 0
+
+TM-n,0 : (n : Nat) → TM n 0
+TM-n,0 n (_ , ())
+
 
 TM-δ-config : (n m : Nat) → Set
 TM-δ-config n m = (Fin n) × ((List (Fin m)) × Nat)

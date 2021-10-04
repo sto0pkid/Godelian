@@ -11,6 +11,7 @@ open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _
 open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
+open import Data.String public using (String)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Unit public using (⊤) renaming (tt to unit)
 open import Data.Vec public using (Vec ; [] ; _∷_ ; toList ; fromList)
@@ -238,6 +239,9 @@ Fin-map-list {A} {n} f m = Fin-fold (_∷_ ∘ f) [] m
 Fin-filter : {A : Set} {n : ℕ} → (Fin n → Maybe A) → Fin n → List A
 Fin-filter {A} {n} f m = Fin-fold (_∷?_ ∘ f) [] m
 
+vec-map : {l₁ l₂ : Level} → {A : Set l₁} → {B : Set l₂} → {n : ℕ} → (f : A → B) → Vec A n → Vec B n
+vec-map f [] = []
+vec-map f (x ∷ xs) = f x ∷ vec-map f xs
 
 vec-append : {A : Set} → {n m : ℕ} → Vec A n → Vec A m → Vec A (n + m)
 vec-append {A} {0} {m} [] v = v
@@ -386,12 +390,22 @@ dite false _ case-false = case-false refl
 le→≤ : {m n : ℕ} → (m le n) ≡ true → m ≤ n
 le→≤ {0} {n} hyp = z≤n
 le→≤ {suc m} {0} ()
-le→≤ {suc m} {suc n} hyp = s≤s (le→≤ {m} {n} hyp)
+le→≤ {suc m} {suc n} hyp = s≤s (le→≤ hyp)
+
+≤→le : {m n : ℕ} → m ≤ n → (m le n) ≡ true
+≤→le {0} {n} z≤n = refl
+≤→le {suc m} {0} ()
+≤→le {suc m} {suc n} (s≤s m≤n) = ≤→le m≤n
 
 lt→< : {m n : ℕ} → (m lt n) ≡ true → m < n
 lt→< {m} {0} ()
 lt→< {0} {suc n} hyp = s≤s (z≤n)
-lt→< {suc m} {suc n} hyp = s≤s (lt→< {m} {n} hyp)
+lt→< {suc m} {suc n} hyp = s≤s (lt→< hyp)
+
+<→lt : {m n : ℕ} → m < n → (m lt n) ≡ true
+<→lt {m} {0} ()
+<→lt {0} {suc n} (s≤s z≤n) = refl
+<→lt {suc m} {suc n} (s≤s m<n) = <→lt m<n
 
 Fin-pred : {n : ℕ} → Fin (suc (suc n)) → Fin (suc n)
 Fin-pred zero = zero
@@ -934,3 +948,69 @@ list-max-is-max2 l@(x ∷ xs) (suc n) (s≤s n<|xs|) = proof
     max-l≥xs[n] = ≤-trans ind max-l≥max-xs
     
     proof = resp (λ y → list-max l ≥ y) (≡-sym l[1+n]≡xs[n]) max-l≥xs[n]
+
+
+Sym→Prop→Trans :
+  {A : Set} → (R : A → A → Set) →
+  ({a b : A} → R a b → R b a) →
+  ({a b c : A} → R a b → R a c → R b c) →
+  ({a b c : A} → R a b → R b c → R a c)
+Sym→Prop→Trans R sym prop Rab Rbc = prop (sym Rab) Rbc
+
+Sym→Trans→Prop :
+  {A : Set} → (R : A → A → Set) →
+  ({a b : A} → R a b → R b a) →
+  ({a b c : A} → R a b → R b c → R a c) →
+  ({a b c : A} → R a b → R a c → R b c)
+Sym→Trans→Prop R sym trans Rab Rac = trans (sym Rab) Rac
+
+
+Functional : {A B : Set} → (A → B → Set) → Set
+Functional {A} {B} R = (a : A) → (b₁ b₂ : B) → R a b₁ → R a b₂ → b₁ ≡ b₂
+
+Total : {A B : Set} → (A → B → Set) → Set
+Total {A} {B} R = (a : A) → Σ[ b ∈ B ] (R a b)
+
+agda-functional : {A B : Set} → (f : A → B) → Functional (_≡_ ∘ f)
+agda-functional f a b₁ b₂ fa≡b₁ fa≡b₂ = ≡-trans (≡-sym fa≡b₁) fa≡b₂
+
+agda-total : {A B : Set} → (f : A → B) → Total (_≡_ ∘ f)
+agda-total f a = (f a) , refl
+
+TotalFunctional→Function :
+  {A B : Set} →
+  (R : A → B → Set) →
+  Total R →
+  Functional R →
+  Σ[ f ∈ (A → B) ] (
+    (a : A) → (b : B) → 
+    (R a b) ↔ ((f a) ≡ b)
+  )
+TotalFunctional→Function {A} {B} R R-total R-functional = f , proof
+  where
+    f = λ a → proj₁ (R-total a)
+    proof : (a : A) → (b : B) → (R a b) ↔ ((f a) ≡ b)
+    proof a b = Rab→fa≡b , fa≡b→Rab
+      where
+        Rab→fa≡b : (R a b) → ((f a) ≡ b)
+        Rab→fa≡b Rab = R-functional a (f a) b (proj₂ (R-total a)) Rab
+            
+        fa≡b→Rab : ((f a) ≡ b) → (R a b)
+        fa≡b→Rab fa≡b = resp (λ y → R a y) fa≡b (proj₂ (R-total a))
+
+Function→TotalFunctional :
+  {A B : Set} →
+  (R : A → B → Set) →
+  (f : A → B) →
+  ((a : A) → (b : B) → (R a b) ↔ ((f a ≡ b))) →
+  Total R × Functional R
+Function→TotalFunctional {A} {B} R f hyp = R-total , R-functional
+  where
+    R-total : Total R
+    R-total a = (f a) , ((proj₂ (hyp a (f a))) refl)
+    
+    R-functional : Functional R
+    R-functional a b₁ b₂ Rab₁ Rab₂ = ≡-trans b₁≡fa fa≡b₂
+      where
+        b₁≡fa = ≡-sym ((proj₁ (hyp a b₁)) Rab₁)
+        fa≡b₂ = (proj₁ (hyp a b₂)) Rab₂
