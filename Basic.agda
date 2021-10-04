@@ -383,9 +383,39 @@ x+y-x=y : (x y : ℕ) → (x + y) - x ≡ y
 x+y-x=y 0 y = refl
 x+y-x=y (suc x) y = x+y-x=y x y
 
+dite' : {A : Set} (b : Bool) → ((b ≡ true) → A) → ((b ≡ false) → A) → A
+dite' true case-true _ = case-true refl
+dite' false _ case-false = case-false refl
+
+≡-Irrelevance : {A : Set} {x y : A} → (e₁ e₂ : x ≡ y) → e₁ ≡ e₂
+≡-Irrelevance refl refl = refl
+
+dite'-true : {A : Set} (b : Bool) → (case-true : b ≡ true → A) (case-false : b ≡ false → A) → (e : b ≡ true) → dite' b case-true case-false ≡ case-true e
+dite'-true true _ _ refl = refl
+dite'-true false _ _ ()
+
+dite'-false : {A : Set} (b : Bool) → (case-true : b ≡ true → A) (case-false : b ≡ false → A) → (e : b ≡ false) → dite' b case-true case-false ≡ case-false e
+dite'-false true _ _ ()
+dite'-false false _ _ refl = refl
+
+dite'-LEM :
+  {A : Set}
+  (b : Bool)
+  (case-true : b ≡ true → A)
+  (case-false : b ≡ false → A) →
+  (Σ[ e ∈ b ≡ true ] (dite' b case-true case-false ≡ case-true e)) ⊎
+  (Σ[ e ∈ b ≡ false ] (dite' b case-true case-false ≡ case-false e))
+dite'-LEM true _ _ = inj₁ (refl , refl)
+dite'-LEM false _ _ = inj₂ (refl , refl)
+
 dite : {A : Bool → Set} → (b : Bool) → ((b ≡ true) → A true) → ((b ≡ false) → A false) → A b
 dite true case-true _ = case-true refl
 dite false _ case-false = case-false refl
+
+⊎-elim : {A B C : Set} → (A → C) → (B → C) → (A ⊎ B → C)
+⊎-elim case-A _ (inj₁ a) = case-A a
+⊎-elim _ case-B (inj₂ b) = case-B b
+
 
 le→≤ : {m n : ℕ} → (m le n) ≡ true → m ≤ n
 le→≤ {0} {n} hyp = z≤n
@@ -1014,3 +1044,7 @@ Function→TotalFunctional {A} {B} R f hyp = R-total , R-functional
       where
         b₁≡fa = ≡-sym ((proj₁ (hyp a b₁)) Rab₁)
         fa≡b₂ = (proj₁ (hyp a b₂)) Rab₂
+
+func-rep : {A : Set} → (A → A) → ℕ → A → A
+func-rep f 0 = id
+func-rep f (suc n) a = f (func-rep f n a)

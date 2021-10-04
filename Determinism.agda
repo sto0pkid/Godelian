@@ -1,11 +1,6 @@
 module Determinism where
 
-open import Basic hiding (_^_)
-
-_^_ : {A : Set} → (A → A) → ℕ → A → A
-f ^ 0 = id
-(f ^ (suc n)) a = f ((f ^ n) a)
-
+open import Basic hiding (_^_) renaming (func-rep to _^_)
 
 
 {-
