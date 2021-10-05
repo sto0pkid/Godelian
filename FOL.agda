@@ -1,6 +1,6 @@
 module FOL where
 
-open import Basic hiding (all)
+open import Basic hiding (all ; lookup)
 
 data Var : Set where
   v : ℕ → Var
@@ -83,61 +83,3 @@ _⊨_ {n} T ϕ =  (p : PreInterpretation {n}) → (model {n} T p) → (model {n}
 
 Th : {n : ℕ} → (T : FOL n) → (ϕ : FOL n) → Set₁
 Th = _⊨_
-
-ϕ₁ : FOL 1
-ϕ₁ = (0 R 1) & (1 R 2)
-  where
-    _R_ : ℕ → ℕ → FOL 1
-    x R y = rel zero (c x) (c y)
-
-ϕ₁-preinterpretation : PreInterpretation {1}
-ϕ₁-preinterpretation = record {
-    A = ℕ ;
-    objs = id ;
-    rels = (λ R → (λ x y → (suc x) ≡ y))
-  }
-
-ϕ₁-model : model ϕ₁ ϕ₁-preinterpretation
-ϕ₁-model = proof
-  where
-    proof : ((suc 0) ≡ 1) × ((suc 1) ≡ 2)
-    proof = refl , refl
-
-
-ϕ₂ : FOL 1
-ϕ₂ = all (v 0) (exists (v 1) (rel zero (v (v 0)) (v (v 1))))
-
-
-ϕ₂-preinterpretation : PreInterpretation {1}
-ϕ₂-preinterpretation = record {
-    A = ℕ ;
-    objs = id ;
-    rels = (λ R → (λ x y → (suc x) ≡ y))
-  }
-
-ϕ₂-model : model ϕ₂ ϕ₂-preinterpretation
-ϕ₂-model = proof
-  where
-    proof : (x : ℕ) → Σ[ y ∈ ℕ ] (suc x ≡ y)
-    proof x = (suc x) , refl
-
-
-
-ϕ₃ : FOL 1
-ϕ₃ = 0 R 0
-  where
-    _R_ : ℕ → ℕ → FOL 1
-    x R y = rel zero (c x) (c y)
-
-ϕ₃-preinterpretation : PreInterpretation {1}
-ϕ₃-preinterpretation = record {
-    A = ℕ ;
-    objs = id ;
-    rels = (λ R → (λ x y → x ≡ y))
-  }
-
-ϕ₃-model : model ϕ₃ ϕ₃-preinterpretation
-ϕ₃-model = proof
-  where
-    proof : (0 ≡ 0)
-    proof = refl

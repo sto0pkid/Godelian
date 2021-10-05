@@ -268,6 +268,9 @@ List-find : {A : Set} (P : A → Bool) → List A → Maybe A
 List-find {A} P [] = nothing
 List-find {A} P (x ∷ xs) = if (P x) then (just x) else (List-find P xs)
 
+{-
+ agda-stdlib has these but I'd prefer to be able to use these definitions without relying on Setoids & records etc...
+-}
 Injective : {i j : Level} {A : Set i} {B : Set j} → (A → B) → Set (i ⊔ j)
 Injective {i} {j} {A} {B} f = {x y : A} → (f x) ≡ (f y) → x ≡ y
 
@@ -563,20 +566,15 @@ lookup<-irrelevance [] 0 ()
 lookup<-irrelevance (x ∷ xs) 0 _ _ = refl
 lookup<-irrelevance l@(x ∷ xs) (suc n) (s≤s n<|xs|₁) (s≤s n<|xs|₂) = lookup<-irrelevance xs n n<|xs|₁ n<|xs|₂
 
-
 lookup<-index-irrelevance : {A : Set} → (l : List A) → (n₁ n₂ : ℕ) → n₁ ≡ n₂ → (n₁<|l| : n₁ < length l) → (n₂<|l| : n₂ < length l) → lookup< l n₁ n₁<|l| ≡ lookup< l n₂ n₂<|l|
 lookup<-index-irrelevance [] _ _ _ ()
 lookup<-index-irrelevance (x ∷ xs) 0 0 refl _ _ = refl
 lookup<-index-irrelevance l@(x ∷ xs) (suc n₁) (suc n₂) 1+n₁≡1+n₂ (s≤s n₁<|xs|) (s≤s n₂<|xs|) = lookup<-index-irrelevance xs n₁ n₂ (suc-injective 1+n₁≡1+n₂) n₁<|xs| n₂<|xs|
 
-
 lookup<-map-lemma : {A B : Set} → (l : List A) → (n : ℕ) → (n<|l| : n < length l) → (f : A → B) → lookup< (map f l) n (index-map-lemma l n n<|l| f) ≡ f (lookup< l n n<|l|)
 lookup<-map-lemma [] _ ()
-lookup<-map-lemma l@(x ∷ xs) 0 0<|l| f = refl
-lookup<-map-lemma l@(x ∷ xs) (suc n) 1+n<|l|@(s≤s n<|xs|) f = lookup<-map-lemma xs n n<|xs| f
-  where  
-    n<|map-f-xs| : n < length (map f xs)
-    n<|map-f-xs| = index-map-lemma xs n n<|xs| f
+lookup<-map-lemma (x ∷ xs) 0 _ _ = refl
+lookup<-map-lemma (x ∷ xs) (suc n) (s≤s n<|xs|) f = lookup<-map-lemma xs n n<|xs| f
 
 lookup<-++-lemma₁ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (n<|l₁| : n < length l₁) → lookup< l₁ n n<|l₁| ≡ lookup< (l₁ ++ l₂) n (index-++-lemma₁ l₁ l₂ n n<|l₁|)
 lookup<-++-lemma₁ [] _ _ ()
@@ -847,3 +845,35 @@ Function→TotalFunctional {A} {B} R f hyp = R-total , R-functional
 func-rep : {A : Set} → (A → A) → ℕ → A → A
 func-rep f 0 = id
 func-rep f (suc n) a = f (func-rep f n a)
+
+List-ext : {i : Level} {A : Set i} {x y : A} {xs ys : List A} → x ≡ y → xs ≡ ys → _≡_ {i} {List A} (x ∷ xs) (y ∷ ys)
+List-ext refl refl = refl
+
+
+Vec-ext : {i : Level} {A : Set i} {n : ℕ} {x y : A} {xs ys : Vec A n} → x ≡ y → xs ≡ ys → _≡_ {i} {Vec A (1 + n)} (x ∷ xs) (y ∷ ys)
+Vec-ext refl refl = refl
+
+Vec-ext2 : {i : Level} {A : Set i} {n : ℕ} (xs : Vec A (1 + n)) → xs ≡ (Data.Vec.head xs) ∷ (Data.Vec.tail xs)
+Vec-ext2 (x ∷ xs) = refl
+
+Vec-empty : {i : Level} {A : Set i} → (xs : Vec A 0) → xs ≡ []
+Vec-empty [] = refl
+
+Vec1-ext : {i : Level} {A : Set i} → (xs : Vec A 1) → xs ≡ ((Data.Vec.head xs) ∷ [])
+Vec1-ext (x ∷ []) = refl
+
+domain : {A B : Set} → (A → B → Set) → A → Set
+domain {A} {B} R x = (Σ[ y ∈ B ] (R x y))
+
+Defined : {A B : Set} → (A → B → Set) → A → Set
+Defined {A} {B} R x = domain R x
+
+
+rel-map : {A B : Set} → {k : ℕ} → (A → B → Set) → Vec A k → Vec B k → Set
+rel-map R [] [] = ⊤
+rel-map R (a ∷ as) (b ∷ bs) = (R a b) × (rel-map R as bs)
+
+rel-fold : {A B C : Set} → {k : ℕ} → (A → B → C → Set) → Vec A k → B → Vec C k → Set
+rel-fold R [] b [] = ⊤
+rel-fold R (a ∷ as) b (c ∷ cs) = (R a b c) × (rel-fold R as b cs)
+
