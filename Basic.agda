@@ -8,7 +8,7 @@ open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; ma
 open import Data.List.Properties public using (length-++ ; length-map)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
 open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_ ; _⊔_ to max)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-step ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective ; ≤-isPartialOrder ; module ≤-Reasoning)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.String public using (String)
@@ -16,7 +16,9 @@ open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Unit public using (⊤) renaming (tt to unit)
 open import Data.Vec public using (Vec ; [] ; _∷_ ; toList ; fromList)
 open import Function.Base public using (id ; _∘_)
+open import Relation.Binary.Bundles using (Poset)
 open import Relation.Binary.PropositionalEquality as PropEq public renaming (sym to ≡-sym ; trans to ≡-trans) hiding ([_])
+-- open import Relation.Binary.Reasoning.PartialOrder as POReasoning public
 -- open import Relation.Binary.EqReasoning
 -- open import Relation.Binary.PropositionalEquality.Core using (≡-Reasoning_)
 open import Relation.Nullary public using (¬_)
@@ -51,6 +53,15 @@ x >' y = Σ[ n ∈ ℕ ] (((1 + n) + y) ≡ x)
 
 _≥'_ : ℕ → ℕ → Set
 x ≥' y = (x ≡ y) ⊎ (x > y)
+
+{-
+More alternative definitions of the standard ordering on ℕ
+-}
+_≥''_ : ℕ → ℕ → Set
+x ≥'' y = Σ[ n ∈ ℕ ] ((n + y) ≡ x)
+
+_>''_ : ℕ → ℕ → Set
+x >'' y = x ≥'' (1 + y)
 
 
 _le_ : ℕ → ℕ → Bool
@@ -521,7 +532,6 @@ lookupℕ-end l n = lookupℕ (reverse l) n
     m+x<n+x : (m + x) < (n + x)
     m+x<n+x = resp (λ y → (m + x) < y) (+-comm x n) m+x<x+n
 
-
 lookup< : {A : Set} → (l : List A) → (n : ℕ) → (n < length l) → A
 lookup< [] _ ()
 lookup< (x ∷ xs) 0 _ = x
@@ -533,32 +543,25 @@ index-map-lemma [] n ()
 index-map-lemma (x ∷ xs) 0 (s≤s z≤n) f = (s≤s z≤n)
 index-map-lemma (x ∷ xs) (suc n) (s≤s n<|xs|) f = s≤s (index-map-lemma xs n n<|xs| f)
 
+ℕ-Poset : Poset lzero lzero lzero
+ℕ-Poset = record{ Carrier = ℕ ; _≈_ = _≡_ ; _≤_ = _≤_ ; isPartialOrder = ≤-isPartialOrder }
 
 index-++-lemma₁ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → n < length l₁ → n < length (l₁ ++ l₂)
-index-++-lemma₁ l₁ l₂ n n<|l₁| = n<|l₁++l₂|
+index-++-lemma₁ l₁ l₂ n n<|l₁| = begin-strict
+  n                      <⟨ n<|l₁| ⟩
+  length l₁              ≤⟨ m≤m+n (length l₁) (length l₂) ⟩
+  length l₁ + length l₂  ≡⟨ ≡-sym (length-++ l₁) ⟩
+  length (l₁ ++ l₂)      ∎
   where
-    |l₁++l₂|≡|l₁|+|l₂| : length (l₁ ++ l₂) ≡ length l₁ + length l₂
-    |l₁++l₂|≡|l₁|+|l₂| = length-++ l₁
-
-    |l₁|≤|l₁|+|l₂| : length l₁ ≤ length l₁ + length l₂
-    |l₁|≤|l₁|+|l₂| = m≤m+n (length l₁) (length l₂)
-
-    |l₁|≤|l₁++l₂| : length l₁ ≤ length (l₁ ++ l₂)
-    |l₁|≤|l₁++l₂| = resp (λ y → length l₁ ≤ y) (≡-sym |l₁++l₂|≡|l₁|+|l₂|) |l₁|≤|l₁|+|l₂|
-    
-    n<|l₁++l₂| = <-transˡ  n<|l₁| |l₁|≤|l₁++l₂|
-
+    open ≤-Reasoning
 
 index-++-lemma₂ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → n < length l₂ → (length l₁) + n < length (l₁ ++ l₂)
-index-++-lemma₂ l₁ l₂ n n<|l₂| = |l₁|+n<|l₁++l₂|
+index-++-lemma₂ l₁ l₂ n n<|l₂| = begin-strict -- |l₁|+n<|l₁++l₂|
+  (length l₁) + n            <⟨ +ₗ-preserves-< (length l₁) n<|l₂| ⟩
+  (length l₁) + (length l₂)  ≡⟨ ≡-sym (length-++ l₁) ⟩
+  length (l₁ ++ l₂)          ∎
   where
-    |l₁|+|l₂|≡|l₁++l₂| : (length l₁) + (length l₂) ≡ length (l₁ ++ l₂)
-    |l₁|+|l₂|≡|l₁++l₂| = ≡-sym (length-++ l₁)
-
-    |l₁|+n<|l₁|+|l₂| : (length l₁) + n < (length l₁) + (length l₂)
-    |l₁|+n<|l₁|+|l₂| = +ₗ-preserves-< (length l₁) n<|l₂|
-    
-    |l₁|+n<|l₁++l₂| = resp (λ y → (length l₁) + n < y) |l₁|+|l₂|≡|l₁++l₂| |l₁|+n<|l₁|+|l₂|
+    open ≤-Reasoning
 
 
 lookup<-irrelevance : {A : Set} → (l : List A) → (n : ℕ) → (n<|l|₁ n<|l|₂ : n < length l) → lookup< l n n<|l|₁ ≡ lookup< l n n<|l|₂
@@ -579,62 +582,63 @@ lookup<-map-lemma (x ∷ xs) (suc n) (s≤s n<|xs|) f = lookup<-map-lemma xs n n
 lookup<-++-lemma₁ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (n<|l₁| : n < length l₁) → lookup< l₁ n n<|l₁| ≡ lookup< (l₁ ++ l₂) n (index-++-lemma₁ l₁ l₂ n n<|l₁|)
 lookup<-++-lemma₁ [] _ _ ()
 lookup<-++-lemma₁ (x ∷ xs) _ 0 _ = refl
-lookup<-++-lemma₁ l₁@(x ∷ xs) l₂ (suc n) 1+n<|l₁|@(s≤s n<|xs|) = ≡-trans xs[n]≡xs++l₂[n] irrelevance
-  where
-    -- Logic: x∷xs[1+n] ≡ xs[n] ≡ xs++l₂[n] ≡ x∷xs++l₂[1+n]
+lookup<-++-lemma₁ l₁@(x ∷ xs) l₂ (suc n) 1+n<|l₁|@(s≤s n<|xs|) =
+  lookup< l₁ (1 + n) 1+n<|l₁|                                         ≡⟨ refl ⟩
+  lookup< xs n n<|xs|                                                 ≡⟨ lookup<-++-lemma₁ xs l₂ n n<|xs| ⟩
+  lookup< (xs ++ l₂) n n<|xs++l₂|                                     ≡⟨ refl ⟩
+  lookup< (l₁ ++ l₂) (1 + n) (s≤s n<|xs++l₂|)                         ≡⟨ lookup<-irrelevance (l₁ ++ l₂) (1 + n) (s≤s n<|xs++l₂|) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|) ⟩
+  lookup< (l₁ ++ l₂) (1 + n) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|) ∎ 
 
+  where
+    open PropEq.≡-Reasoning
     n<|xs++l₂| : n < length (xs ++ l₂)
     n<|xs++l₂| = index-++-lemma₁ xs l₂ n n<|xs|
-
-    xs[n]≡xs++l₂[n] : lookup< xs n n<|xs| ≡ lookup< (xs ++ l₂) n n<|xs++l₂|
-    xs[n]≡xs++l₂[n] = lookup<-++-lemma₁ xs l₂ n n<|xs|
-
-    irrelevance : lookup< (l₁ ++ l₂) (1 + n) (s≤s n<|xs++l₂|) ≡ lookup< (l₁ ++ l₂) (1 + n) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|)
-    irrelevance = lookup<-irrelevance (l₁ ++ l₂) (1 + n) (s≤s n<|xs++l₂|) (index-++-lemma₁ l₁ l₂ (1 + n) 1+n<|l₁|)
 
 
 lookup<-++-lemma₂ : {A : Set} → (l₁ l₂ : List A) → (n : ℕ) → (n<|l₂| : n < length l₂) → lookup< l₂ n n<|l₂| ≡ lookup< (l₁ ++ l₂) ((length l₁) + n) (index-++-lemma₂ l₁ l₂ n n<|l₂|)
 lookup<-++-lemma₂ _ [] _ ()
 lookup<-++-lemma₂ [] (y ∷ ys) 0 _ = refl
 lookup<-++-lemma₂ [] l₂@(y ∷ ys) (suc n) 1+n<|l₂| = refl
-lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) 0 0<|l₂| = l₂[0]≡l₁++l₂[|l₁|+0]
+lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) 0 0<|l₂| =
+  lookup< l₂ 0 0<|l₂|
+
+    ≡⟨ lookup<-++-lemma₂ xs l₂ 0 0<|l₂| ⟩
+      
+  lookup< (l₁ ++ l₂) (1 + ((length xs) + 0)) (s≤s |xs|+0<|xs++l₂|)
+
+    ≡⟨ lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + 0)) ((length l₁) + 0) (+-assoc 1 (length xs) 0) (s≤s |xs|+0<|xs++l₂|) |l₁|+0<|l₁++l₂| ⟩
+      
+  lookup< (l₁ ++ l₂) ((length l₁) + 0) (index-++-lemma₂ l₁ l₂ 0 0<|l₂|) ∎
   where
-    |xs|+0<|xs++l₂| : ((length xs) + 0) < length (xs ++ l₂)
+    open PropEq.≡-Reasoning
+    |l₁|+0<|l₁++l₂| = index-++-lemma₂ l₁ l₂ 0 0<|l₂|
     |xs|+0<|xs++l₂| = index-++-lemma₂ xs l₂ 0 0<|l₂|
 
-    |xs|<|xs++l₂| : (length xs) < length (xs ++ l₂)
-    |xs|<|xs++l₂| = resp (λ y → y < length (xs ++ l₂)) (+-identityʳ (length xs)) |xs|+0<|xs++l₂|
+lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂|@(s≤s n<|ys|) = -- l₂[1+n]≡l₁++l₂[|l₁|+1+n]
+  lookup< l₂ (1 + n) 1+n<|l₂|
+  
+    ≡⟨ lookup<-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂| ⟩
     
-    l₂[0]≡xs++l₂[|xs|+0] : lookup< l₂ 0 0<|l₂| ≡ lookup< (xs ++ l₂) ((length xs) + 0) |xs|+0<|xs++l₂|
-    l₂[0]≡xs++l₂[|xs|+0] = lookup<-++-lemma₂ xs l₂ 0 0<|l₂|
+  lookup< (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) (s≤s |xs|+1+n<|xs++l₂|)
 
+    ≡⟨ lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) ((length l₁) + (1 + n)) (+-assoc 1 (length xs) (1 + n)) (s≤s |xs|+1+n<|xs++l₂|) |l₁|+1+n<|l₁++l₂| ⟩
 
-    1+|xs|+0<|l₁++l₂| : 1 + ((length xs) + 0) < length (l₁ ++ l₂)
-    1+|xs|+0<|l₁++l₂| = s≤s |xs|+0<|xs++l₂|
-
-    |l₁|+0<|l₁++l₂| : (length l₁) + 0 < length (l₁ ++ l₂)
-    |l₁|+0<|l₁++l₂| = (index-++-lemma₂ l₁ l₂ 0 0<|l₂|)
-
-    l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0] :  lookup< (l₁ ++ l₂) (1 + ((length xs) + 0)) 1+|xs|+0<|l₁++l₂| ≡ lookup< (l₁ ++ l₂) ((length l₁) + 0) |l₁|+0<|l₁++l₂|
-    l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0] = lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + 0)) ((length l₁) + 0) (+-assoc 1 (length xs) 0) 1+|xs|+0<|l₁++l₂| |l₁|+0<|l₁++l₂|
-
-    l₂[0]≡l₁++l₂[|l₁|+0] = ≡-trans l₂[0]≡xs++l₂[|xs|+0] l₁++l₂[1+|xs|+0]≡l₁++l₂[|l₁|+0]
-lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂|@(s≤s n<|ys|) = l₂[1+n]≡l₁++l₂[|l₁|+1+n]
+  lookup< (l₁ ++ l₂) ((length l₁) + (1 + n)) |l₁|+1+n<|l₁++l₂|      ∎
   where
-    |xs|+1+n<|xs++l₂| : (length xs) + (1 + n) < length (xs ++ l₂)
+    open PropEq.≡-Reasoning
     |xs|+1+n<|xs++l₂| = index-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
-    
+    |l₁|+1+n<|l₁++l₂| = index-++-lemma₂ l₁ l₂ (1 + n) 1+n<|l₂|
+
+ {-
     l₂[1+n]≡xs++l₂[|xs|+1+n] : lookup< l₂ (1 + n) 1+n<|l₂| ≡ lookup< (xs ++ l₂) ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂|
     l₂[1+n]≡xs++l₂[|xs|+1+n] = lookup<-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
 
-    |l₁|+1+n<|l₁++l₂| : (length l₁) + (1 + n) < length (l₁ ++ l₂)
-    |l₁|+1+n<|l₁++l₂| = index-++-lemma₂ l₁ l₂ (1 + n) 1+n<|l₂|
 
     l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] : lookup< (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) (s≤s |xs|+1+n<|xs++l₂|) ≡ lookup< (l₁ ++ l₂) ((length l₁) + (1 + n)) |l₁|+1+n<|l₁++l₂|
     l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] = lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) ((length l₁) + (1 + n)) (+-assoc 1 (length xs) (1 + n)) (s≤s |xs|+1+n<|xs++l₂|) |l₁|+1+n<|l₁++l₂|
     
     l₂[1+n]≡l₁++l₂[|l₁|+1+n] = ≡-trans l₂[1+n]≡xs++l₂[|xs|+1+n] l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n]
-
+-}
 
 𝟚^ : (n : ℕ) → List (Vec Bool n)
 𝟚^ 0 = [] ∷ []
