@@ -99,6 +99,9 @@ record TM-state (n m : Nat) : Set where
 
 
 
+
+
+
 {-
   This applies a TM-transition to a configuration to get a new configuration
   n = # states
@@ -401,14 +404,14 @@ TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (List-find match
 TM-raise : {n m : Nat} → (n' : Nat) → TM n m → TM (n' + n) m
 TM-raise {n} {m} n' M (q , s) = 
   (dite
-    {λ b → Maybe ((Fin (n' + n) × (Fin m × Bool)))}
+    {λ b → TM-action (n' + n) m}
     ((toℕ q) lt n)
     (λ case-true →
       fix (M (fromℕ< (lt→< case-true) , s))
     )
     (λ _ → nothing))
   where
-    fix : Maybe (Fin n × (Fin m × Bool)) → Maybe (Fin (n' + n) × (Fin m × Bool))
+    fix : TM-action n m → TM-action (n' + n) m
     fix nothing = nothing
     fix (just (q' , (s' , d))) = just ((raise n' q') , (s' , d))
 
@@ -440,10 +443,10 @@ TM-raise+ {suc n} {m} (suc n') M (q , s) = output
     qₙ : Fin (1 + n)
     qₙ = coerce (cong (λ x → Fin x) (x+y-x=y (1 + n') (1 + n))) qₙ'
     
-    M-out : Maybe (Fin (1 + n) × (Fin m × Bool))
+    M-out : TM-action (1 + n) m
     M-out = M (qₙ , s)
     
-    get-results : Maybe (Fin (1 + n) × (Fin m × Bool)) → Maybe (Fin ((1 + n') + (1 + n)) × (Fin m × Bool))
+    get-results : TM-action (1 + n) m → TM-action ((1 + n') + (1 + n)) m
     get-results nothing = nothing
     get-results (just (q' , (s' , d))) = just ((raise (suc n') q') , (s' , d))
     
@@ -473,7 +476,7 @@ seq {n} {n'} {m} M₁ M₂ = M₁,₂
     fix-M₂ : TM (1 + n' + n) m
     fix-M₂ = coerce (cong (λ x → TM x m) (+-comm n (1 + n'))) (TM-raise+ n M₂)
 
-    switch : Fin m → Maybe (Fin (1 + n' + n) × Fin m × Bool) → Fin (1 + n' + n) × Fin m × Bool
+    switch : Fin m → TM-action (1 + n' + n) m → TM-transition (1 + n' + n) m
     switch s nothing = (fromℕ< (m<1+n+m n n')) , (s , true)
     switch s (just output) = output
 

@@ -1,6 +1,7 @@
 module TuringMachine.Properties where
 
 open import Basic renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM)
+open import Relation.Binary.PropositionalEquality as PropEq
 open import TuringMachine3 hiding (δ)
 
 TM-state-halted : {n m : Nat} → TM-state (suc n) m → Set
@@ -8,34 +9,68 @@ TM-state-halted state = halted ≡ true
   where
     open TM-state state
 
+
+{-
+  Statement that a given TM and input eventually halts
+-}
 TM-halts : {n m : Nat} → TM (suc n) m → List (Fin m) → Set
 TM-halts {n} {m} tm input = Σ[ steps ∈ Nat ] (TM-state-halted (TM-run steps tm input))
 
+
+
+{-
+  Statement that a given TM and input loops forever
+-}
 TM-loops : {n m : Nat} → TM (suc n) m → List (Fin m) → Set
 TM-loops tm input = ¬ (TM-halts tm input)
 
 
 
 
+{-
+  NOTE:
+  The following 5 lemmas, halting-transition-theorems 1-5, are building up to the main:
+  
+  halting-transition-theorem:
+   * Which states that if there is an input for which a TM eventually halts, then there is a (state , symbol) pair
+     for which the action of that TM is halting
+    
+  looping-transition-theorem
+   * If there is no (state , symbol) pair for which the action of TM is to halt, then the TM never halts on any input
+
+  The latter is just the contrapositive of the former
+-}
+
+{-
+  PROOF: Applying a halting action to a TM configuration results in the current tape
+-}
 halting-transition-theorem1 :
   {n m : Nat}
-  (tm : TM (suc n) (suc m))
-  (condition : ((Fin (suc n)) × ((List (Fin (suc m))) × Nat))) →
-  TM-apply-δ condition nothing ≡ inj₂ (proj₁ (proj₂ condition))
+  (tm : TM (1 + n) (1 + m))
+  (config : TM-δ-config (1 + n) (1 + m)) →
+  TM-apply-δ config nothing ≡ inj₂ (proj₁ (proj₂ config))
 halting-transition-theorem1 tm (_ , (tape , _)) = refl
 
+
+{-
+  PROOF: Applying a transition action to a TM configuration applies the transition to get a new configuration
+-}
 halting-transition-theorem2 :
   {n m : Nat}
-  (tm : TM (suc n) (suc m))
-  (condition : ((Fin (suc n)) × ((List (Fin (suc m))) × Nat)))
-  (δ : ((Fin (suc n)) × ((Fin (suc m)) × Bool))) →
-  TM-apply-δ condition (just δ) ≡ inj₁ (TM-apply-transition condition δ)
+  (tm : TM (1 + n) (1 + m))
+  (config : TM-δ-config (1 + n) (1 + m))
+  (δ : TM-transition (1 + n) (1 + m)) →
+  TM-apply-δ config (just δ) ≡ inj₁ (TM-apply-transition config δ)
 halting-transition-theorem2 tm (_ , (_ , _)) δ = refl
 
+
+{-
+  PROOF: If the result of applying an action to a TM configuration is an output tape, then the action is a halting action
+-}
 halting-transition-theorem3 :
   {n m : Nat}
-  (tm : TM (suc n) (suc m))
-  (condition : ((Fin (suc n)) × ((List (Fin (suc m))) × Nat))) →
+  (tm : TM (1 + n) (1 + m))
+  (condition : TM-δ-config (1 + n) (1 + m)) →
   (output : Σ[ tape ∈ (List (Fin (suc m))) ] (
     (TM-step tm condition) ≡ (inj₂ tape)
   )) →
@@ -53,28 +88,23 @@ halting-transition-theorem3 {n} {m} tm condition@(state , (tape , pos)) (out-tap
     ∨-lemma : {A B : Set} → (a : A) → (b : B) → (mk-inl A B a) ≢ (mk-inr A B b)
     ∨-lemma _ _ ()
 
-    δ-lemma1 : (δ ≡ nothing) ⊎ (Σ[ x ∈ ((Fin (suc n)) × ((Fin (suc m)) × Bool)) ] (δ ≡ just x))
+    δ-lemma1 : (δ ≡ nothing) ⊎ (Σ[ x ∈ TM-transition (1 + n) (1 + m) ] (δ ≡ just x))
     δ-lemma1 = Maybe-LEM δ
 
-    δ-lemma2 : ¬ (Σ[ x ∈ ((Fin (suc n)) × ((Fin (suc m)) × Bool)) ] (δ ≡ just x))
+    δ-lemma2 : ¬ (Σ[ x ∈ TM-transition (1 + n) (1 + m) ] (δ ≡ just x))
     δ-lemma2 (x , δ=just-x) = subproof
       where
-        sublemma1 : (TM-apply-δ condition δ) ≡ (TM-apply-δ condition (just x))
-        sublemma1 = cong (TM-apply-δ condition) δ=just-x
+        -- NOTE: memory issues... how does an inj₁ equal an inj₂ ?
+        sublemma : inj₁ (TM-apply-transition condition x) ≡ inj₂ out-tape
+        sublemma =
+          inj₁ (TM-apply-transition condition x) ≡⟨ ≡-sym (halting-transition-theorem2 tm condition x) ⟩
+          TM-apply-δ condition (just x)          ≡⟨ ≡-sym (cong (TM-apply-δ condition) δ=just-x) ⟩
+          TM-apply-δ condition δ                 ≡⟨ output-condition ⟩
+          inj₂ out-tape                          ∎
+          where
+            open PropEq.≡-Reasoning
 
-        sublemma2 : (TM-apply-δ condition (just x)) ≡ inj₁ (TM-apply-transition condition x)
-        sublemma2 = halting-transition-theorem2 tm condition x
-
-        sublemma3 : (TM-apply-δ condition δ) ≡ inj₁ (TM-apply-transition condition x)
-        sublemma3 = ≡-trans sublemma1 sublemma2
-
-        sublemma4 : (TM-apply-δ condition δ) ≡ inj₂ out-tape
-        sublemma4 = output-condition
-
-        sublemma5 : inj₁ (TM-apply-transition condition x) ≡ inj₂ out-tape
-        sublemma5 = ≡-trans (≡-sym sublemma3) sublemma4
-
-        subproof = ∨-lemma (TM-apply-transition condition x) out-tape sublemma5
+        subproof = ∨-lemma (TM-apply-transition condition x) out-tape sublemma --5
 
     δ-lemma3 : δ ≡ nothing
     δ-lemma3 = process-of-elimination-r δ-lemma1 δ-lemma2
@@ -83,11 +113,17 @@ halting-transition-theorem3 {n} {m} tm condition@(state , (tape , pos)) (out-tap
 
 
 
+
+{-
+  PROOF:
+  If TM-step-state applied to a configuration results in a halted configuration,
+  then TM-step applied to that configuration results in an output tape
+-}
 halting-transition-theorem4 :
   {n m : Nat}
-  (tm : TM (suc n) (suc m))
-  (config1 : TM-state (suc n) (suc m))
-  (config2 : TM-state (suc n) (suc m)) →
+  (tm : TM (1 + n) (1 + m))
+  (config1 : TM-state (1 + n) (1 + m))
+  (config2 : TM-state (1 + n) (1 + m)) →
   TM-step-state tm config1 ≡ config2 →
   let
     in-state = TM-state.state config1
@@ -97,7 +133,7 @@ halting-transition-theorem4 :
     halted = TM-state.halted config2
   in
     (halted ≡ true) →
-    Σ[ tape ∈ (List (Fin (suc m))) ] (
+    Σ[ tape ∈ (List (Fin (1 + m))) ] (
       (TM-step tm (in-state , (in-tape , in-pos))) ≡ (inj₂ tape)
     )
 halting-transition-theorem4 {n} {m} tm config1 config2 hyp1 config2-halted = proof
@@ -148,6 +184,14 @@ halting-transition-theorem4 {n} {m} tm config1 config2 hyp1 config2-halted = pro
 
     proof = step-lemma3
 
+
+
+
+{-
+  PROOF:
+  If TM-step-state applied to a configuration config1 results in a halted configuration,
+  then the TM transition function applied to the (state , symbol) pair of config1 is a halting action.
+-}
 halting-transition-theorem5 :
   {n m : Nat}
   (tm : TM (suc n) (suc m))
@@ -180,7 +224,11 @@ halting-transition-theorem5 {n} {m} tm config1 config2 hyp1 config2-halted = pro
     
     proof = lemma2
 
+
+
+
 {-
+  PROOF:
   If there is an input for which M halts, then there is a (state , symbol) pair for which M halts
 -}
 halting-transition-theorem :
@@ -277,6 +325,7 @@ halting-transition-theorem {n} {m} tm tape halts = proof
 
 
 {-
+  PROOF: 
   If there is no (state , symbol) pair for which M halts, then M loops on all inputs
 -}
 looping-transition-theorem :
@@ -291,24 +340,49 @@ looping-transition-theorem tm tape = contrapositive (halting-transition-theorem 
 
 
 
+
+{-
+  Statement that a TM-state is a halted state with a given output
+-}
 TM-state-outputs : {n m : Nat} → TM-state (suc n) m → List (Fin m) → Set
 TM-state-outputs state output = (halted ≡ true) × (tape ≡ output)
   where
     open TM-state state
 
+
+
+{-
+  Statement that a TM eventually halts with a given output
+-}
 TM-outputs : {n m : Nat} → TM (suc n) m → List (Fin m) → List (Fin m) → Set
 TM-outputs tm input output = Σ[ steps ∈ Nat ] (TM-state-outputs (TM-run steps tm input) output)
 
+_[_]=_ : {n m : Nat} → TM (suc n) m → List (Fin m) → List (Fin m) → Set
+M [ input ]= output = TM-outputs M input output
+
+
+
+
+{-
+  Definition of what it means for a TM to be universal.
+
+  NOTE: this is potentially too strong a definition, it requires exact symbol-wise equality of the outputs.
+-}
 TM-is-UTM : {n m : Nat} → TM (suc n) m → Set
 TM-is-UTM {n} {m} M =
   Σ[ G ∈ (TM (suc n) m × List (Fin m) → List (Fin m)) ] (
     (M' : TM (suc n) m) →
     (input output : List (Fin m)) →
-    ((TM-outputs M' input output) ↔ (TM-outputs M (G (M' , input)) output))
+    ((M' [ input ]= output) ↔ (M [ (G (M' , input)) ]= output))
   )
 
+
+{-
+  The Kolmogorov complexity of a string s, represented by a List (Fin m), relative to a program-interpreter machine M, 
+  is the length of the smallest program for which M outputs s.
+-}
 TM-Kolmogorov : {n m : Nat} → TM (suc n) m → List (Fin m) → Nat → Set
-TM-Kolmogorov {n} {m} M s x = min-Nat (λ x' → (Σ[ p ∈ (List (Fin m)) ] ((TM-outputs M p s) × ((length p) ≡ x')))) x
+TM-Kolmogorov {n} {m} M s x = min-Nat (λ x' → (Σ[ p ∈ (List (Fin m)) ] ((M [ p ]= s) × ((length p) ≡ x')))) x
 
 
 -- at any step, it's either halted or it hasn't
@@ -324,6 +398,11 @@ TM-step-LEM :
 TM-step-LEM tm tape steps = Bool-LEM (TM-state.halted (TM-run steps tm tape))
 
 
+
+
+{-
+  It's (constructively) not false that a TM either halts or loops
+-}
 ¬¬TM-LEM :
   {n m : Nat} →
   (tm : TM (suc n) m) →
