@@ -209,7 +209,7 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
 
         sublemma7 :
           (TM-apply-δ condition (just (q₁ , (s , R)))) ≡
-          (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+          (inj₁ (TM-apply-transition condition (q₁ , (s , R))))
         sublemma7 = refl
 
         sublemma8 :
@@ -219,32 +219,32 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
 
         sublemma9 :
           (TM-step K condition) ≡
-          (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+          (inj₁ (TM-apply-transition condition (q₁ , (s , R))))
         sublemma9 = ≡-trans sublemma8 sublemma7
 
         sublemma10 :
            (TM-apply-step config (TM-step K condition)) ≡
-           (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+           (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma10 = cong (λ x → TM-apply-step config x) sublemma9
 
         sublemma11 :
-          TM-state.state (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
-          ≡ (proj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+          TM-state.state (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
+          ≡ (proj₁ (TM-apply-transition condition (q₁ , (s , R))))
         sublemma11 = refl
 
         sublemma12 :
-          (proj₁ (TM-apply-δ-just condition (q₁ , (s , R))))
+          (proj₁ (TM-apply-transition condition (q₁ , (s , R))))
           ≡ q₁
         sublemma12 = refl
 
         sublemma13 :
           (TM-run (suc n) K tape) ≡ 
-          (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+          (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma13 = (≡-trans sublemma1 (≡-trans sublemma2 sublemma10))
         
         sublemma14 :
           TM-state.state (TM-run (suc n) K tape) ≡
-          TM-state.state (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+          TM-state.state (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma14 = cong (λ x → TM-state.state x) sublemma13
       
         sublemma15 :
@@ -253,12 +253,12 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
         sublemma15 = ≡-trans sublemma14 (≡-trans sublemma11 sublemma12)
 
         sublemma16 :
-          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R))))) ≡ false
+          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R))))) ≡ false
         sublemma16 = refl
 
         sublemma17 :
           TM-state.halted (TM-run (suc n) K tape) ≡
-          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-δ-just condition (q₁ , (s , R)))))
+          TM-state.halted (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma17 = cong (λ x → TM-state.halted x) sublemma13
 
         sublemma18 :

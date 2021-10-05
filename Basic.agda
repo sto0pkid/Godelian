@@ -311,15 +311,12 @@ x+1+y=1+x+y x y =
 
 sx+y>y : (x y : ℕ) → ((1 + x) + y) > y
 sx+y>y x 0 = s≤s z≤n
-sx+y>y x (suc y) = proof
+sx+y>y x (suc y) = begin-strict
+  1 + y               <⟨ s≤s (sx+y>y x y) ⟩
+  1 + ((1 + x) + y)   ≡⟨ ≡-sym (x+1+y=1+x+y (1 + x) y) ⟩
+  (1 + x) + (1 + y)   ∎
   where
-    lemma1 : ((1 + x) + (1 + y)) ≡ 1 + ((1 + x) + y)
-    lemma1 = x+1+y=1+x+y (1 + x) y
-
-    lemma2 : 1 + ((1 + x) + y) > 1 + y
-    lemma2 = s≤s (sx+y>y x y)
-    
-    proof = resp (λ t → t > 1 + y) (≡-sym lemma1) lemma2
+      open ≤-Reasoning
 
 sx+y=sz→x+y=z : {x y z : ℕ} → ((1 + x) + y) ≡ (1 + z) → (x + y) ≡ z
 sx+y=sz→x+y=z refl = refl
@@ -475,16 +472,13 @@ list-max (x ∷ xs) = max x (list-max xs)
 list-max-is-max : (l : List ℕ) → (i : Fin (length l)) → (list-max l) ≥ (lookup l i)
 list-max-is-max [] ()
 list-max-is-max (x ∷ xs) zero = resp (λ y → (list-max (x ∷ xs)) ≥ y) refl (m⊔n≥m x (list-max xs))
-list-max-is-max (x ∷ xs) (suc i) = ≤-trans lmax-xs≥x∷xs[i+1] lmax-x-xs≥lmax-xs
+list-max-is-max l@(x ∷ xs) 1+i@(suc i) = begin
+  lookup l 1+i   ≡⟨ refl ⟩
+  lookup xs i    ≤⟨ list-max-is-max xs i ⟩
+  list-max xs    ≤⟨ m⊔n≥n x (list-max xs) ⟩
+  list-max l     ∎ 
   where
-    ind : (list-max xs) ≥ (lookup xs i)
-    ind = list-max-is-max xs i
-
-    lmax-x-xs≥lmax-xs : (list-max (x ∷ xs)) ≥ (list-max xs)
-    lmax-x-xs≥lmax-xs = m⊔n≥n x (list-max xs)
-
-    lmax-xs≥x∷xs[i+1] : (list-max xs) ≥ (lookup (x ∷ xs) (suc i))
-    lmax-xs≥x∷xs[i+1] = resp (λ y → (list-max xs) ≥ y) refl ind
+    open ≤-Reasoning
 
 x+x≡2x : (x : ℕ) → x + x ≡ 2 * x
 x+x≡2x x =
@@ -521,16 +515,13 @@ lookupℕ-end l n = lookupℕ (reverse l) n
 +ₗ-preserves-< (suc x) m<n = s≤s (+ₗ-preserves-< x m<n)
 
 +ᵣ-preserves-< : {m n : ℕ} → (x : ℕ) → m < n → (m + x) < (n + x)
-+ᵣ-preserves-< {m} {n} x m<n = m+x<n+x
++ᵣ-preserves-< {m} {n} x m<n = begin-strict
+  m + x   ≡⟨ +-comm m x ⟩
+  x + m   <⟨ +ₗ-preserves-< x m<n ⟩
+  x + n   ≡⟨ +-comm x n ⟩
+  n + x   ∎
   where
-    x+m<x+n : (x + m) < (x + n)
-    x+m<x+n = +ₗ-preserves-< x m<n
-
-    m+x<x+n : (m + x) < (x + n)
-    m+x<x+n = resp (λ y → y < (x + n)) (+-comm x m) x+m<x+n
-
-    m+x<n+x : (m + x) < (n + x)
-    m+x<n+x = resp (λ y → (m + x) < y) (+-comm x n) m+x<x+n
+    open ≤-Reasoning
 
 lookup< : {A : Set} → (l : List A) → (n : ℕ) → (n < length l) → A
 lookup< [] _ ()
@@ -629,16 +620,6 @@ lookup<-++-lemma₂ l₁@(x ∷ xs) l₂@(y ∷ ys) (suc n) 1+n<|l₂|@(s≤s n<
     |xs|+1+n<|xs++l₂| = index-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
     |l₁|+1+n<|l₁++l₂| = index-++-lemma₂ l₁ l₂ (1 + n) 1+n<|l₂|
 
- {-
-    l₂[1+n]≡xs++l₂[|xs|+1+n] : lookup< l₂ (1 + n) 1+n<|l₂| ≡ lookup< (xs ++ l₂) ((length xs) + (1 + n)) |xs|+1+n<|xs++l₂|
-    l₂[1+n]≡xs++l₂[|xs|+1+n] = lookup<-++-lemma₂ xs l₂ (1 + n) 1+n<|l₂|
-
-
-    l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] : lookup< (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) (s≤s |xs|+1+n<|xs++l₂|) ≡ lookup< (l₁ ++ l₂) ((length l₁) + (1 + n)) |l₁|+1+n<|l₁++l₂|
-    l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n] = lookup<-index-irrelevance (l₁ ++ l₂) (1 + ((length xs) + (1 + n))) ((length l₁) + (1 + n)) (+-assoc 1 (length xs) (1 + n)) (s≤s |xs|+1+n<|xs++l₂|) |l₁|+1+n<|l₁++l₂|
-    
-    l₂[1+n]≡l₁++l₂[|l₁|+1+n] = ≡-trans l₂[1+n]≡xs++l₂[|xs|+1+n] l₁++l₂[1+|xs|+1+n]≡l₁++l₂[|l₁|+1+n]
--}
 
 𝟚^ : (n : ℕ) → List (Vec Bool n)
 𝟚^ 0 = [] ∷ []
@@ -769,16 +750,13 @@ List→Vec→List {A} {suc n} l@(x ∷ xs) |l|≡1+n = cong (_∷_ x) (List→Ve
 list-max-is-max2 : (l : List ℕ) → (i : ℕ) → (i<|l| : i < length l) → list-max l ≥ lookup< l i i<|l|
 list-max-is-max2 [] _ ()
 list-max-is-max2 l@(x ∷ xs) 0 0<|l| = m⊔n≥m x (list-max xs)
-list-max-is-max2 l@(x ∷ xs) (suc n) (s≤s n<|xs|) = resp (λ y → list-max l ≥ y) {x = lookup< xs n n<|xs|} refl max-l≥xs[n]
+list-max-is-max2 l@(x ∷ xs) (suc n) 1+n<|l|@(s≤s n<|xs|) = begin
+  lookup< l (1 + n) 1+n<|l|   ≡⟨ refl ⟩
+  lookup< xs n n<|xs|         ≤⟨ list-max-is-max2 xs n n<|xs| ⟩
+  list-max xs                 ≤⟨ m⊔n≥n x (list-max xs) ⟩
+  list-max l                  ∎
   where
-    ind : list-max xs ≥ lookup< xs n n<|xs|
-    ind = list-max-is-max2 xs n n<|xs|
-
-    max-l≥max-xs : list-max l ≥ list-max xs
-    max-l≥max-xs = m⊔n≥n x (list-max xs)
-
-    max-l≥xs[n] : list-max l ≥ lookup< xs n n<|xs|
-    max-l≥xs[n] = ≤-trans ind max-l≥max-xs
+    open ≤-Reasoning
 
 
 Sym→Prop→Trans :
@@ -881,3 +859,5 @@ rel-fold : {A B C : Set} → {k : ℕ} → (A → B → C → Set) → Vec A k �
 rel-fold R [] b [] = ⊤
 rel-fold R (a ∷ as) b (c ∷ cs) = (R a b c) × (rel-fold R as b cs)
 
+flatten : {A : Set} → List (List A) → List A
+flatten nested = foldr _++_ [] nested

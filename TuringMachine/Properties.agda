@@ -15,6 +15,8 @@ TM-loops : {n m : Nat} → TM (suc n) m → List (Fin m) → Set
 TM-loops tm input = ¬ (TM-halts tm input)
 
 
+
+
 halting-transition-theorem1 :
   {n m : Nat}
   (tm : TM (suc n) (suc m))
@@ -27,7 +29,7 @@ halting-transition-theorem2 :
   (tm : TM (suc n) (suc m))
   (condition : ((Fin (suc n)) × ((List (Fin (suc m))) × Nat)))
   (δ : ((Fin (suc n)) × ((Fin (suc m)) × Bool))) →
-  TM-apply-δ condition (just δ) ≡ inj₁ (TM-apply-δ-just condition δ)
+  TM-apply-δ condition (just δ) ≡ inj₁ (TM-apply-transition condition δ)
 halting-transition-theorem2 tm (_ , (_ , _)) δ = refl
 
 halting-transition-theorem3 :
@@ -60,19 +62,19 @@ halting-transition-theorem3 {n} {m} tm condition@(state , (tape , pos)) (out-tap
         sublemma1 : (TM-apply-δ condition δ) ≡ (TM-apply-δ condition (just x))
         sublemma1 = cong (TM-apply-δ condition) δ=just-x
 
-        sublemma2 : (TM-apply-δ condition (just x)) ≡ inj₁ (TM-apply-δ-just condition x)
+        sublemma2 : (TM-apply-δ condition (just x)) ≡ inj₁ (TM-apply-transition condition x)
         sublemma2 = halting-transition-theorem2 tm condition x
 
-        sublemma3 : (TM-apply-δ condition δ) ≡ inj₁ (TM-apply-δ-just condition x)
+        sublemma3 : (TM-apply-δ condition δ) ≡ inj₁ (TM-apply-transition condition x)
         sublemma3 = ≡-trans sublemma1 sublemma2
 
         sublemma4 : (TM-apply-δ condition δ) ≡ inj₂ out-tape
         sublemma4 = output-condition
 
-        sublemma5 : inj₁ (TM-apply-δ-just condition x) ≡ inj₂ out-tape
+        sublemma5 : inj₁ (TM-apply-transition condition x) ≡ inj₂ out-tape
         sublemma5 = ≡-trans (≡-sym sublemma3) sublemma4
 
-        subproof = ∨-lemma (TM-apply-δ-just condition x) out-tape sublemma5
+        subproof = ∨-lemma (TM-apply-transition condition x) out-tape sublemma5
 
     δ-lemma3 : δ ≡ nothing
     δ-lemma3 = process-of-elimination-r δ-lemma1 δ-lemma2
@@ -178,7 +180,9 @@ halting-transition-theorem5 {n} {m} tm config1 config2 hyp1 config2-halted = pro
     
     proof = lemma2
 
-
+{-
+  If there is an input for which M halts, then there is a (state , symbol) pair for which M halts
+-}
 halting-transition-theorem :
   {n m : Nat}
   (tm : TM (suc n) (suc m))
@@ -270,6 +274,11 @@ halting-transition-theorem {n} {m} tm tape halts = proof
     
     proof = condition , δ=nothing
 
+
+
+{-
+  If there is no (state , symbol) pair for which M halts, then M loops on all inputs
+-}
 looping-transition-theorem :
   {n m : Nat}
   (tm : TM (suc n) (suc m))
@@ -279,6 +288,7 @@ looping-transition-theorem :
   )) →
   TM-loops tm tape
 looping-transition-theorem tm tape = contrapositive (halting-transition-theorem tm tape)
+
 
 
 TM-state-outputs : {n m : Nat} → TM-state (suc n) m → List (Fin m) → Set
