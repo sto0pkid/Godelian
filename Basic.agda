@@ -3,7 +3,8 @@ module Basic where
 open import Agda.Primitive public
 open import Data.Bool public using (Bool ; true ; false ; not ; _∧_ ; _∨_ ; _xor_ ; if_then_else_)
 open import Data.Empty public using (⊥ ; ⊥-elim)
-open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ< ; raise)
+open import Data.Fin public using (Fin ; zero ; suc ; toℕ ; fromℕ ; fromℕ< ; raise ; cast ; inject+)
+open import Data.Fin.Properties public using (toℕ-fromℕ<)
 open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; map ; foldl ; foldr ; reverse ; any ; all ; lookup ; replicate) renaming (sum to list-sum ; product to list-product ; mapMaybe to filter)
 open import Data.List.Properties public using (length-++ ; length-map)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
@@ -275,9 +276,9 @@ eq-Fin {n} m₁ m₂ = (toℕ m₁) eq (toℕ m₂)
 eq-∧ : {A B : Set} (eq-A : A → A → Bool) (eq-B : B → B → Bool) → (A × B) → (A × B) → Bool
 eq-∧ _eq-A_ _eq-B_ (a , b) (a' , b') = (a eq-A a') and (b eq-B b')
 
-List-find : {A : Set} (P : A → Bool) → List A → Maybe A
-List-find {A} P [] = nothing
-List-find {A} P (x ∷ xs) = if (P x) then (just x) else (List-find P xs)
+find : {A : Set} (P : A → Bool) → List A → Maybe A
+find {A} P [] = nothing
+find {A} P (x ∷ xs) = if (P x) then (just x) else (find P xs)
 
 {-
  agda-stdlib has these but I'd prefer to be able to use these definitions without relying on Setoids & records etc...
@@ -861,3 +862,14 @@ rel-fold R (a ∷ as) b (c ∷ cs) = (R a b c) × (rel-fold R as b cs)
 
 flatten : {A : Set} → List (List A) → List A
 flatten nested = foldr _++_ [] nested
+
+data Fin< : ℕ → Set where
+  mkfin : {m : ℕ} (n : ℕ) → .(n < m) → Fin< m
+
+Fin<-Irrelevance : {m n : ℕ} → (hyp₁ hyp₂ : n < m) → mkfin {m} n hyp₁ ≡ mkfin {m} n hyp₂
+Fin<-Irrelevance hyp₁ hyp₂ = refl
+
+toℕ-inject-lemma : {m : ℕ} (n : ℕ) → (i : Fin m) → toℕ (inject+ n i) ≡ toℕ i
+toℕ-inject-lemma {0}     n     ()
+toℕ-inject-lemma {suc m} n zero = refl
+toℕ-inject-lemma {suc m} n (suc i) = cong suc (toℕ-inject-lemma n i)

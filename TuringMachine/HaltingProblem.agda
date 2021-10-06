@@ -6,11 +6,16 @@ open import TuringMachine.Properties
 
 
 {-
-derelativize by actually defining K:
- * Given 3 Turing machine M and input i, run M on input i,
-   if it ever halts with output 0, halt
-   if it ever halts with output 1, loop
-need a UTM for such a construction, but there are possibly other constructions
+  Theory describing the semantics of a halting problem decider H, as well as
+  the "diagonalization gadget" K.
+
+  NOTE:
+   * The point of this theory is that I don't have enough basic results about
+     Turing machines in order to actually construct K from H. Once those basic
+     results and mechanisms for Turing machine composition are available then
+     K will be able to be constructed and impossibility of H can be actually proved
+     rather than just proved "under the assumption that K can be constructed",
+     and this theory and the relativized proof can be removed.
 -}
 record HaltingProblem : Set where
   field
@@ -43,6 +48,11 @@ record HaltingProblem : Set where
       )) ↔ TM-halts K (e₂ M))
     
 
+
+{-
+  Proof that the theory described by `HaltingProblem` is inconsistent.
+  From this we can infer that no TM can decide the halting problem for TMs.
+-}
 HaltingProblem-undecidable : ¬ HaltingProblem
 HaltingProblem-undecidable R = proof
   where
@@ -113,8 +123,20 @@ HaltingProblem-undecidable R = proof
 
 
 
-K-helper : List (TM-δ 3 3)
-K-helper =
+{-
+  This is to be used for constructing the "diagonalization gadget" K used in
+  proving the undecidability of the halting problem. It is intended to be composed
+  with the halting decider H in order to produce K.
+
+  The semantics are that on input 0, it halts immediately, and on input 1 it loops forever.
+
+  The result is that [K' ∘ H](program, input) does the opposite of the conclusion of H(program,input):
+   * If H(program,input) = 0, concluding that the program loops, then [K' ∘ H](program,input) = K'(0) which halts immediately.
+   * If H(program,input) = 1, concluding that the program halts, then [K' ∘ H](program,input) = K'(1) which loops forever.
+
+-}
+K'-table : List (TM-δ 3 3)
+K'-table =
   -- if 0, halt immediately
     (δ q₀ s₀ q₂ s₀ L)
   -- if 1, loop forever
@@ -135,21 +157,39 @@ K-helper =
     L = false
     R = true
 
+K' : TM 3 3
+K' = TM-from-table K'-table
 
-K-helper-halts-on-0 :
+{-
+  PROOF:
+  K' halts on 0 
+-}
+K'-halts-on-0 :
   let
     s₀ = suc zero
   in
-    TM-halts (TM-from-table K-helper) (s₀ ∷ [])
-K-helper-halts-on-0 = 2 , refl
+    TM-halts K' (s₀ ∷ [])
+K'-halts-on-0 = 2 , refl
 
-K-helper-loops-on-1 :
+
+
+
+{-
+  PROOF:
+  K' loops on input 1
+
+  NOTE:
+   * This proof would probably be simpler if K' was built from more basic
+     primitives, like an always-halting TM, an always-looping TM, and an
+     if-then-else machine that will run one or the other depending on the input.
+-}
+K'-loops-on-1 :
   let
     s₁ = suc (suc zero)
   in
-    TM-loops (TM-from-table K-helper) (s₁ ∷ [])
-K-helper-loops-on-1 (0 , ())
-K-helper-loops-on-1 ((suc steps) , halted) = proof
+    TM-loops K' (s₁ ∷ [])
+K'-loops-on-1 (0 , ())
+K'-loops-on-1 ((suc steps) , halted) = proof
   where
     q₁ = suc zero
 
@@ -157,53 +197,51 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
 
     R = true
  
-    K = (TM-from-table K-helper)
-
     tape = (s₁ ∷ [])
 
-    lemma1 : (s : Fin 3) → K (q₁ , s) ≡ just (q₁ , (s , R)) 
+    lemma1 : (s : Fin 3) → K' (q₁ , s) ≡ just (q₁ , (s , R)) 
     lemma1 zero = refl
     lemma1 (suc zero) = refl
     lemma1 (suc (suc zero)) = refl
 
-    lemma2 : (n : Nat) → TM-state.state (TM-run n K tape) ≡ q₁ → (TM-state.state (TM-run (suc n) K tape) ≡ q₁) × (TM-state.halted (TM-run (suc n) K tape) ≡ false)
+    lemma2 : (n : Nat) → TM-state.state (TM-run n K' tape) ≡ q₁ → (TM-state.state (TM-run (suc n) K' tape) ≡ q₁) × (TM-state.halted (TM-run (suc n) K' tape) ≡ false)
     lemma2 n hyp = subproof
       where
-        config = TM-run n K tape
+        config = TM-run n K' tape
         q = TM-state.state config
         t = TM-state.tape config
         p = TM-state.pos config
         s = (get-default zero t p)
         condition = (q , (t , p))
 
-        sublemma1a : fold (TM-start-state K tape) (TM-step-state K) n ≡ TM-run n K tape
+        sublemma1a : fold (TM-start-state K' tape) (TM-step-state K') n ≡ TM-run n K' tape
         sublemma1a = refl
 
-        sublemma1 : (TM-run (suc n) K tape) ≡ (TM-step-state K (TM-run n K tape))
-        sublemma1 = cong (λ state → TM-step-state K state) sublemma1a
+        sublemma1 : (TM-run (suc n) K' tape) ≡ (TM-step-state K' (TM-run n K' tape))
+        sublemma1 = cong (λ state → TM-step-state K' state) sublemma1a
 
         sublemma2 :
-            (TM-step-state K (TM-run n K tape)) ≡
-            (TM-apply-step config (TM-step K condition))
+            (TM-step-state K' (TM-run n K' tape)) ≡
+            (TM-apply-step config (TM-step K' condition))
         sublemma2 = refl
 
         sublemma3 :
-            (TM-step K condition) ≡
-            (TM-apply-δ condition (K (q , s)))
+            (TM-step K' condition) ≡
+            (TM-apply-δ condition (K' (q , s)))
         sublemma3 = refl
 
         sublemma4 :
-            (K (q , s)) ≡ 
-            (K (q₁ , s))
-        sublemma4 = cong (λ x → K (x , s)) hyp
+            (K' (q , s)) ≡ 
+            (K' (q₁ , s))
+        sublemma4 = cong (λ x → K' (x , s)) hyp
         
         sublemma5 :
-            (K (q₁ , s)) ≡
+            (K' (q₁ , s)) ≡
             (just (q₁ , (s , R)))
         sublemma5 = lemma1 s
         
         sublemma6 :
-          (TM-apply-δ condition (K (q , s))) ≡
+          (TM-apply-δ condition (K' (q , s))) ≡
           (TM-apply-δ condition (just (q₁ , (s , R))))
         sublemma6 = cong (λ x → TM-apply-δ condition x) (≡-trans sublemma4 sublemma5)
 
@@ -213,17 +251,17 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
         sublemma7 = refl
 
         sublemma8 :
-          (TM-step K condition) ≡
+          (TM-step K' condition) ≡
           (TM-apply-δ condition (just (q₁ , (s , R))))
         sublemma8 = ≡-trans sublemma3 sublemma6
 
         sublemma9 :
-          (TM-step K condition) ≡
+          (TM-step K' condition) ≡
           (inj₁ (TM-apply-transition condition (q₁ , (s , R))))
         sublemma9 = ≡-trans sublemma8 sublemma7
 
         sublemma10 :
-           (TM-apply-step config (TM-step K condition)) ≡
+           (TM-apply-step config (TM-step K' condition)) ≡
            (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma10 = cong (λ x → TM-apply-step config x) sublemma9
 
@@ -238,17 +276,17 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
         sublemma12 = refl
 
         sublemma13 :
-          (TM-run (suc n) K tape) ≡ 
+          (TM-run (suc n) K' tape) ≡ 
           (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma13 = (≡-trans sublemma1 (≡-trans sublemma2 sublemma10))
         
         sublemma14 :
-          TM-state.state (TM-run (suc n) K tape) ≡
+          TM-state.state (TM-run (suc n) K' tape) ≡
           TM-state.state (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma14 = cong (λ x → TM-state.state x) sublemma13
       
         sublemma15 :
-          TM-state.state (TM-run (suc n) K tape) ≡
+          TM-state.state (TM-run (suc n) K' tape) ≡
           q₁
         sublemma15 = ≡-trans sublemma14 (≡-trans sublemma11 sublemma12)
 
@@ -257,21 +295,21 @@ K-helper-loops-on-1 ((suc steps) , halted) = proof
         sublemma16 = refl
 
         sublemma17 :
-          TM-state.halted (TM-run (suc n) K tape) ≡
+          TM-state.halted (TM-run (suc n) K' tape) ≡
           TM-state.halted (TM-apply-step config (inj₁ (TM-apply-transition condition (q₁ , (s , R)))))
         sublemma17 = cong (λ x → TM-state.halted x) sublemma13
 
         sublemma18 :
-          TM-state.halted (TM-run (suc n) K tape) ≡
+          TM-state.halted (TM-run (suc n) K' tape) ≡
           false
         sublemma18 = ≡-trans sublemma17 sublemma16
         subproof = sublemma15 , sublemma18
         
-    lemma3 : (n : Nat) → (TM-state.state (TM-run (suc n) K (s₁ ∷ [])) ≡ q₁) × (TM-state.halted (TM-run (suc n) K (s₁ ∷ [])) ≡ false)
+    lemma3 : (n : Nat) → (TM-state.state (TM-run (suc n) K' (s₁ ∷ [])) ≡ q₁) × (TM-state.halted (TM-run (suc n) K' (s₁ ∷ [])) ≡ false)
     lemma3 0 = refl , refl
     lemma3 (suc n) = subproof
       where
-        prev-state-is-q₁ : TM-state.state (TM-run (suc n) K (s₁ ∷ [])) ≡ q₁
+        prev-state-is-q₁ : TM-state.state (TM-run (suc n) K' (s₁ ∷ [])) ≡ q₁
         prev-state-is-q₁ = proj₁ (lemma3 n)
         
         subproof = lemma2 (suc n) prev-state-is-q₁

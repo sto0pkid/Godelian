@@ -389,10 +389,15 @@ TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (List-find match
 
 
 
+TM-raise-action : {n m : Nat} → (n' : Nat) → TM-action n m → TM-action (n' + n) m
+TM-raise-action n' nothing = nothing
+TM-raise-action n' (just (q , (s , b))) = just (raise n' q , (s , b))
+
 
 
 {-
-  This translates an n-state, m-symbol TM to an equivalent (n' + n)-state , m-symbol TM
+  This translates an n-state, m-symbol TM to an equivalent (n' + n)-state , m-symbol TM.
+  It essentially runs on the first n states.
 
   Input:
    * # of states to add           : Nat
@@ -400,29 +405,25 @@ TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (List-find match
 
   Outputs:
    * TM with new states added     : TM (n' + n) m
+
+  TODO:
+   * prove equivalence
 -}
 TM-raise : {n m : Nat} → (n' : Nat) → TM n m → TM (n' + n) m
 TM-raise {n} {m} n' M (q , s) = 
-  (dite
-    {λ b → TM-action (n' + n) m}
+  dite'
     ((toℕ q) lt n)
     (λ case-true →
-      fix (M (fromℕ< (lt→< case-true) , s))
+      TM-raise-action n' (M (fromℕ< (lt→< case-true) , s))
     )
-    (λ _ → nothing))
-  where
-    fix : TM-action n m → TM-action (n' + n) m
-    fix nothing = nothing
-    fix (just (q' , (s' , d))) = just ((raise n' q') , (s' , d))
-
-
-
+    (λ _ → nothing)
 
 
 
 
 {-
-  This translates an n-state, m-symbol TM to an equivalent (n' + n)-state , m-symbol TM
+  This translates an n-state, m-symbol TM to an equivalent (n' + n)-state , m-symbol TM.
+  It runs on the last n' states.
 
   Input:
    * # of states to add           : Nat
@@ -430,11 +431,30 @@ TM-raise {n} {m} n' M (q , s) =
 
   Outputs:
    * TM with new states added     : TM (n' + n) m
+
+
+  EXPLANATION:
+  adding 0 states to a TM:
+   * the new TM is identical to the first, just run the first directly on any input
+
+  adding 1+n' states to a 0-state TM:
+   * none of the states in the new TM correspond to states in the original TM; the semantics
+     of any state will be to halt immediately on any input
+
+  adding 1+n' states to a 1+n-state TM:
+   * if the state s is less than n', this doesn't correspond to any state of the original TM,
+     the semantics will be to halt immediately.
+   * if the state s is greater or equal to n', this corresponds to the state (s - n') of the original TM
+     run the original TM on the state (s - n')
+
+  TODO:
+   * clean up annoying Fin arithmetic
+   * unify the 2 cases for adding 1+n' states
+   * prove equivalence
 -}
 TM-raise+ : {n m : Nat} → (n' : Nat) → TM n m → TM (n' + n) m
-TM-raise+ {0} {m} 0 M (() , s)
-TM-raise+ {0} {m} (suc n') M (q , s) = nothing
-TM-raise+ {suc n} {m} 0 M (q , s)  = M (q , s)
+TM-raise+ {n}     {m} 0        M (q , s) = M (q , s)
+TM-raise+ {0}     {m} (suc n') M (q , s) = nothing
 TM-raise+ {suc n} {m} (suc n') M (q , s) = output
   where
     qₙ' : (Fin (((1 + n') + (1 + n)) - (1 + n')))
@@ -454,9 +474,6 @@ TM-raise+ {suc n} {m} (suc n') M (q , s) = output
 
 
 
-
-
-
 {-
   This takes two TMs and produces a TM that's equivalent to running them in sequence
   
@@ -466,20 +483,41 @@ TM-raise+ {suc n} {m} (suc n') M (q , s) = output
 
   Output:
    * (1+n')+n-state , m-symbol TM       : TM ((1 + n') + n) m
+
+  NOTE:
+   * This isn't equivalent to the partial-function composition M₂ ∘ M₁ , because
+     it doesn't shift back to the beginning of the tape after M₁ finishes, it just
+     shifts one cell right and starts running M₂.
+   * This can perhaps be used as a primitive in constructing partial-function composition.
+
+  TODO:
+   * prove these specifications on the behavior
 -}
 seq : {n n' m : Nat} → (M₁ : TM n m) → (M₂ : TM (1 + n') m) → TM ((1 + n') + n) m
 seq {n} {n'} {m} M₁ M₂ = M₁,₂
   where
+    {-
+      Raise M₁ and M₂ to machines with (1 + n' + n) states.
+    -}
     fix-M₁ : TM (1 + n' + n) m
     fix-M₁ = TM-raise (1 + n') M₁
 
     fix-M₂ : TM (1 + n' + n) m
     fix-M₂ = coerce (cong (λ x → TM x m) (+-comm n (1 + n'))) (TM-raise+ n M₂)
 
+    {-
+      If the action of M₁ would have been to halt, then the action of M₂∘M₁ will be to
+      set the state to n (equivalent to state 0 of M₂), leave the tape symbol unchanged, and move right,
+      otherwise just do the normal action of M₁.
+    -}
     switch : Fin m → TM-action (1 + n' + n) m → TM-transition (1 + n' + n) m
     switch s nothing = (fromℕ< (m<1+n+m n n')) , (s , true)
-    switch s (just output) = output
+    switch s (just transition) = transition
 
+    {-
+      If the state q is less than n, then do the action M₁ (with the appropriate `switch` if the action
+      would have been to halt), otherwise do the action of M₂.
+    -}
     M₁,₂ : TM (1 + n' + n) m
     M₁,₂ (q , s) =
       if (Fin-lt q n) then

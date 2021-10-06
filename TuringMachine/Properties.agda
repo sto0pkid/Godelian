@@ -144,13 +144,13 @@ halting-transition-theorem4 {n} {m} tm config1 config2 hyp1 config2-halted = pro
     step = TM-step tm condition
 
     step-lemma1 :
-      (Σ[ new-condition ∈ ((Fin (suc n)) × ((List (Fin (suc m))) × Nat)) ] (step ≡ inj₁ new-condition))
+      (Σ[ new-condition ∈ TM-δ-config (1 + n) (1 + m) ] (step ≡ inj₁ new-condition))
       ⊎ (Σ[ out-tape ∈ (List (Fin (suc m))) ] (step ≡ inj₂ out-tape))
     step-lemma1 = ⊎-LEM step
 
     apply-lemma-l :
       (some-config : TM-state (suc n) (suc m)) →
-      (some-condition : ((Fin (suc n)) × ((List (Fin (suc m))) × Nat))) →
+      (some-condition : TM-δ-config (1 + n) (1 + m) ) →
       let
         some-state = proj₁ some-condition
         some-tape = proj₁ (proj₂ some-condition)
@@ -160,7 +160,7 @@ halting-transition-theorem4 {n} {m} tm config1 config2 hyp1 config2-halted = pro
     apply-lemma-l _ _ = refl
 
     step-lemma2 : ¬ (
-      Σ[ new-condition ∈ ((Fin (suc n)) × ((List (Fin (suc m))) × Nat)) ]
+      Σ[ new-condition ∈ TM-δ-config (1 + n) (1 + m) ]
         (step ≡ inj₁ new-condition)
       )
     step-lemma2 ((new-state , (new-tape , new-pos)) , hyp) = subproof
@@ -215,15 +215,12 @@ halting-transition-theorem5 {n} {m} tm config1 config2 hyp1 config2-halted = pro
     
     lemma1 :
       Σ[ some-tape ∈ (List (Fin (suc m))) ] (
-        (TM-step tm (state , (tape , pos))) ≡ (inj₂ some-tape)
+        (TM-step tm condition) ≡ (inj₂ some-tape)
       )
     lemma1 = halting-transition-theorem4 tm config1 config2 hyp1 config2-halted
 
-    lemma2 : (tm (state , (get-default zero tape pos))) ≡ nothing
-    lemma2 = halting-transition-theorem3 tm condition lemma1
-    
-    proof = lemma2
-
+    proof : (tm (state , (get-default zero tape pos))) ≡ nothing
+    proof = halting-transition-theorem3 tm condition lemma1
 
 
 
@@ -241,14 +238,11 @@ halting-transition-theorem :
   )
 halting-transition-theorem {n} {m} tm tape halts = proof
   where
-    lemma1 :  Σ[ steps ∈ Nat ] (TM-state-halted (TM-run steps tm tape))
-    lemma1 = halts
-
-    steps = proj₁ lemma1
+    steps = proj₁ halts
     final-config = TM-run steps tm tape
     
     halted : TM-state.halted final-config ≡ true
-    halted = proj₂ lemma1
+    halted = proj₂ halts
 
     start-config = TM-start-state tm tape
     ¬start-config-halted : TM-state.halted start-config ≡ false
@@ -293,18 +287,7 @@ halting-transition-theorem {n} {m} tm tape halts = proof
     config-lemma2 some-tm some-tape some-staps = refl
 
     config-lemma3 : TM-step-state tm pre-final-config ≡ final-config
-    config-lemma3 = subproof
-      where
-        sublemma1 : TM-step-state tm pre-final-config ≡ TM-run (suc steps-1) tm tape
-        sublemma1 = refl
-
-        sublemma2 : TM-run (suc steps-1) tm tape ≡ TM-run steps tm tape
-        sublemma2 = cong (λ x → TM-run x tm tape) (≡-sym (proj₂ steps=sm))
-
-        sublemma3 : TM-run steps tm tape ≡ final-config
-        sublemma3 = refl
-        
-        subproof = sublemma2
+    config-lemma3 = cong (λ x → TM-run x tm tape) (≡-sym (proj₂ steps=sm))
 
     condition : Fin (suc n) × Fin (suc m)
     condition = pre-final-state , pre-final-symbol
@@ -314,7 +297,7 @@ halting-transition-theorem {n} {m} tm tape halts = proof
         pre-final-pos = TM-state.pos pre-final-config
         pre-final-symbol = get-default zero pre-final-tape pre-final-pos
 
-    δ : Maybe ((Fin (suc n)) × ((Fin (suc m)) × Bool))
+    δ : TM-action (1 + n) (1 + m)
     δ = tm condition
 
     δ=nothing : δ ≡ nothing
@@ -380,9 +363,15 @@ TM-is-UTM {n} {m} M =
 {-
   The Kolmogorov complexity of a string s, represented by a List (Fin m), relative to a program-interpreter machine M, 
   is the length of the smallest program for which M outputs s.
+
+  NOTE:
+   * because the Kolmogorov complexity is defined relative to arbitrary TMs, a particular string might not have
+     a Kolmogorov complexity for a particular TM, if there is no input for which the TM outputs that string. 
 -}
 TM-Kolmogorov : {n m : Nat} → TM (suc n) m → List (Fin m) → Nat → Set
 TM-Kolmogorov {n} {m} M s x = min-Nat (λ x' → (Σ[ p ∈ (List (Fin m)) ] ((M [ p ]= s) × ((length p) ≡ x')))) x
+
+
 
 
 -- at any step, it's either halted or it hasn't
@@ -402,6 +391,10 @@ TM-step-LEM tm tape steps = Bool-LEM (TM-state.halted (TM-run steps tm tape))
 
 {-
   It's (constructively) not false that a TM either halts or loops
+
+  NOTE:
+   * this is just an instance of the statement that the double-negation of LEM is
+     constructively true at any type, i.e. ¬ (¬ (A ⊎ ¬A)), where A = (TM-halts tm tape)
 -}
 ¬¬TM-LEM :
   {n m : Nat} →
@@ -416,3 +409,7 @@ TM-step-LEM tm tape steps = Bool-LEM (TM-state.halted (TM-run steps tm tape))
     ¬¬halts : ¬ (¬ (TM-halts tm tape))
     ¬¬halts ¬halts = ¬TM-LEM (inj₂ ¬halts)
 
+
+Fin-add : {n : Nat} → (n' : Nat) → Fin n → Fin (n' + n)
+Fin-add 0 m = m
+Fin-add (suc n) m = suc (Fin-add n m)
