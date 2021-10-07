@@ -9,8 +9,9 @@ open import Data.List public using (List ; [] ; _∷_ ; [_] ; length ; _++_ ; ma
 open import Data.List.Properties public using (length-++ ; length-map)
 open import Data.Maybe public using (Maybe ; nothing ; just ; is-nothing ; is-just) renaming (map to Maybe-map)
 open import Data.Nat public using (ℕ ; zero ; suc ; _+_ ; _*_ ; _^_ ; pred ; _<_ ; _≤_ ; _>_ ; _≥_ ; _≮_ ; _≰_ ; _≯_ ; _≱_ ; z≤n ; s≤s) renaming (_<ᵇ_ to _lt_ ; _∸_ to _-_ ; _≡ᵇ_ to _eq_ ; _⊔_ to max)
-open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-step ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective ; ≤-isPartialOrder ; module ≤-Reasoning)
+open import Data.Nat.Properties public using (+-assoc ; +-comm ; +-identityˡ ; +-identityʳ ; +-identity ; 1+n≢0 ; ≤-step ; ≤-reflexive ;  ≤-refl ; ≤-trans ; ≤-antisym ; <-irrefl ; <-transʳ ; <-transˡ ; n≤1+n ; m<n⇒m≤1+n ;  m≤m+n ; m≤n+m ; m<n+m ; m<m+n ; >⇒≢ ; <⇒≱ ; ≮⇒≥ ; n≢0⇒n>0 ; <⇒≤ ; ≤∧≢⇒< ; 0<1+n ; ⊔-identityʳ ;  suc-injective ; ≤-isPartialOrder ; module ≤-Reasoning; *-comm ; *-zeroʳ ; *-zeroˡ)
 open import Data.Nat.GeneralisedArithmetic public using (fold)
+open import Data.Nat.DivMod public using (_/_ ; _%_ ; m≡m%n+[m/n]*n ; m≤n⇒m%n≡m ; [m+kn]%n≡m%n ; m*n%n≡0 ; +-distrib-/ ; m<n⇒m/n≡0 ; m*n/n≡m)
 open import Data.Product public using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; Σ-syntax)
 open import Data.String public using (String)
 open import Data.Sum public using (_⊎_ ; inj₁ ; inj₂)
@@ -873,3 +874,398 @@ toℕ-inject-lemma : {m : ℕ} (n : ℕ) → (i : Fin m) → toℕ (inject+ n i)
 toℕ-inject-lemma {0}     n     ()
 toℕ-inject-lemma {suc m} n zero = refl
 toℕ-inject-lemma {suc m} n (suc i) = cong suc (toℕ-inject-lemma n i)
+
+find-preserve : {A B : Set} (P₁ : A → Bool) (P₂ : B → Bool) (f : A → B) → ((a : A) → P₁ a ≡ P₂ (f a)) → (l : List A) → Maybe-map f (find P₁ l) ≡ find P₂ (map f l)
+find-preserve         _  _  _  _   []       = refl
+find-preserve {A} {B} P₁ P₂ f  hyp l@(x ∷ xs) = proof
+  where
+    ind : Maybe-map f (find P₁ xs) ≡ find P₂ (map f xs)
+    ind = find-preserve P₁ P₂ f hyp xs
+    
+    lemma1 : (find P₁ l) ≡ (if (P₁ x) then (just x) else (find P₁ xs))
+    lemma1 = refl
+
+    lemma2 : (find P₂ (map f l)) ≡ (if (P₂ (f x)) then (just (f x)) else (find P₂ (map f xs)))
+    lemma2 = refl
+
+    case-false : P₁ x ≡ false → Maybe-map f (find P₁ l) ≡ find P₂ (map f l)
+    case-false P₁x≡false = ≡-trans sublemma1 sublemma2
+      where
+        sublemma1 : Maybe-map f (find P₁ l) ≡ find P₂ (map f xs)
+        sublemma1 = (≡-trans (cong (Maybe-map f) (cong (λ b → if b then (just x) else (find P₁ xs)) P₁x≡false)) ind)
+
+        P₂fx≡false : P₂ (f x) ≡ false
+        P₂fx≡false = ≡-trans (≡-sym (hyp x)) P₁x≡false
+        
+        sublemma2 : (find P₂ (map f xs)) ≡ (find P₂ (map f l))
+        sublemma2 = ≡-sym (cong (λ b → if b then (just (f x)) else (find P₂ (map f xs))) P₂fx≡false)
+
+    case-true : P₁ x ≡ true → Maybe-map f (find P₁ l) ≡ (find P₂ (map f l))
+    case-true P₁x≡true = ≡-trans sublemma1 sublemma2
+      where
+        sublemma1 : Maybe-map f (find P₁ l) ≡ (just (f x))
+        sublemma1 = cong (Maybe-map f) (cong (λ b → if b then (just x) else (find P₁ xs)) P₁x≡true)
+
+        P₂fx≡true : P₂ (f x) ≡ true
+        P₂fx≡true = ≡-trans (≡-sym (hyp x)) P₁x≡true
+
+        sublemma2 : (just (f x)) ≡ (find P₂ (map f l))
+        sublemma2 = ≡-sym (cong (λ b → if b then (just (f x)) else (find P₂ (map f xs))) P₂fx≡true)
+    
+    proof = ⊎-elim case-true case-false (Bool-LEM (P₁ x))
+
+if-lemma : {A : Set} → (b : Bool) → (a₁ a₂ : A) → ((if b then a₁ else a₂) ≡ a₁) ⊎ ((if b then a₁ else a₂) ≡ a₂)
+if-lemma true _ _ = inj₁ refl
+if-lemma false _ _ = inj₂ refl
+
+
+
+match : {A : Set} → (A → Bool) → List A → Bool
+match _ []       = false
+match P (x ∷ xs) = (P x) or (match P xs)
+
+sublist : {A : Set} → (l₁ l₂ : List A) → Set
+sublist {A} l₁ l₂ = Σ[ x ∈ List A ] (Σ[ y ∈ List A ] (l₂ ≡ (x ++ l₁) ++ y))
+
+list-subset : {A : Set} → (l₁ l₂ : List A) → Set
+list-subset {A} l₁ l₂ = (i₁ : Fin (length l₁)) → Σ[ i₂ ∈ Fin (length l₂) ] (lookup l₁ i₁ ≡ lookup l₂ i₂)
+
+++-subsetₗ : {A : Set} → (l₁ l₂ : List A) → list-subset l₁ (l₁ ++ l₂)
+++-subsetₗ [] _ ()
+++-subsetₗ l₁@(x ∷ xs) l₂ zero = zero , refl
+++-subsetₗ l₁@(x ∷ xs) l₂ (suc i₁) = i₂ , proof
+  where
+    ind : Σ[ i₂ ∈ Fin (length (xs ++ l₂)) ] (lookup xs i₁ ≡ lookup (xs ++ l₂) i₂)
+    ind = ++-subsetₗ xs l₂ i₁
+    
+    i₂ = suc (proj₁ ind)
+    proof = proj₂ ind
+
+{-
+++-subsetᵣ : {A : Set} → (l₁ l₂ : List A) → list-subset l₂ (l₁ ++ l₂)
+++-subsetᵣ []          _  i = i , refl
+++-subsetᵣ l₁@(x ∷ xs) l₂ zero = raise (length l₁) zero 
+-}
+
+list-subset< : {A : Set} → (l₁ l₂ : List A) → Set
+list-subset< {A} l₁ l₂ = (i₁ : ℕ) → (i₁<|l₁| : i₁ < (length l₁)) → Σ[ i₂ ∈ ℕ ] (Σ[ i₂<|l₂| ∈ i₂ < (length l₂) ] (lookup< l₁ i₁ i₁<|l₁| ≡ lookup< l₂ i₂ i₂<|l₂|))
+
+++-subset<ₗ : {A : Set} → (l₁ l₂ : List A) → list-subset< l₁ (l₁ ++ l₂)
+++-subset<ₗ {A} [] _ _ ()
+++-subset<ₗ {A} l₁@(x ∷ xs) l₂ 0 0<|l₁| = 0 , (index-++-lemma₁ l₁ l₂ 0 0<|l₁| , refl)
+++-subset<ₗ {A} l₁@(x ∷ xs) l₂ (suc i) 1+i<|l₁|@(s≤s i<|xs|) = 1 + i' , (s≤s i'<|xs++l₂| , proof)
+  where
+    ind : Σ[ i' ∈ ℕ ] (Σ[ i'<|xs++l₂| ∈ i' < length (xs ++ l₂) ] (lookup< xs i i<|xs| ≡ lookup< (xs ++ l₂) i' i'<|xs++l₂|))
+    ind = ++-subset<ₗ xs l₂ i i<|xs|
+
+    i' = proj₁ ind
+    i'<|xs++l₂| = proj₁ (proj₂ ind)
+    proof = proj₂ (proj₂ ind)
+
+pop : {A : Set} → List A → List A
+pop [] = []
+pop (x ∷ xs) = xs
+
+func-rep-inner : {A : Set} (f : A → A) (n : ℕ) → A → A
+func-rep-inner f 0 a = a
+func-rep-inner f (suc n) a = (func-rep-inner f n) (f a)
+
+func-rep-lemma1 : {A : Set} (f : A → A) (n : ℕ) (a : A) → f (func-rep f n a) ≡ func-rep f n (f a)
+func-rep-lemma1 {A} f 0 a = refl
+func-rep-lemma1 {A} f (suc n) a = cong f (func-rep-lemma1 f n a)
+
+
+func-rep-lemma : {A : Set} (f : A → A) (n : ℕ) (a : A) → func-rep f n a ≡ func-rep-inner f n a
+func-rep-lemma f 0 a = refl
+func-rep-lemma f (suc n) a = --proof
+  func-rep f (suc n) a         ≡⟨ func-rep-lemma1 f n a ⟩ 
+  func-rep f n (f a)           ≡⟨ func-rep-lemma f n (f a) ⟩
+  func-rep-inner f n (f a)     ≡⟨ refl ⟩
+  func-rep-inner f (suc n) a   ∎
+  where
+    open PropEq.≡-Reasoning
+    
+pop-++-lemma : {A : Set} → (l₁ l₂ : List A) → (func-rep pop (length l₁)) (l₁ ++ l₂) ≡ l₂
+pop-++-lemma [] l = refl
+pop-++-lemma l₁@(x ∷ xs) l₂ =
+  (func-rep pop (length l₁)) (l₁ ++ l₂)           ≡⟨ func-rep-lemma pop (length l₁) (l₁ ++ l₂) ⟩ 
+  (func-rep-inner pop (length l₁)) (l₁ ++ l₂)     ≡⟨ refl ⟩
+  (func-rep-inner pop (length xs)) (xs ++ l₂)     ≡⟨ ≡-sym (func-rep-lemma pop (length xs) (xs ++ l₂)) ⟩
+  (func-rep pop (length xs)) (xs ++ l₂)           ≡⟨ pop-++-lemma xs l₂ ⟩ 
+  l₂                                              ∎
+  where
+    open PropEq.≡-Reasoning
+
+not-or-lemma : (A B : Bool) → A or B ≡ false → A ≡ false × B ≡ false
+not-or-lemma true true ()
+not-or-lemma true false ()
+not-or-lemma false true ()
+not-or-lemma false false _ = refl , refl
+
+or-poe-lemma₁ : (A B : Bool) → A or B ≡ true → A ≡ false → B ≡ true
+or-poe-lemma₁ true _ _ ()
+or-poe-lemma₁ false true _ _ = refl
+or-poe-lemma₁ false false ()
+
+not-false-lemma : (A : Bool) → not A ≡ true → A ≡ false
+not-false-lemma true ()
+not-false-lemma false _ = refl
+
+¬not-lemma : {A B : Bool} → A ≢ B → A ≡ not B
+¬not-lemma {true}  {true}  true≢true   = ⊥-elim (true≢true refl)
+¬not-lemma {true}  {false} _           = refl
+¬not-lemma {false} {true}  _           = refl
+¬not-lemma {false} {false} false≢false = ⊥-elim (false≢false refl) 
+
+
+match-cons-lemma : {A : Set} (P : A → Bool) (x : A) (xs : List A) → match P (x ∷ xs) ≡ false → match P xs ≡ false
+match-cons-lemma P x xs hyp = proj₂ (not-or-lemma (P x) (match P xs) hyp)
+
+match-++-lemma₂ : {A : Set} → (P : A → Bool) → (l₁ l₂ : List A) → match P l₁ ≡ false → match P (l₁ ++ l₂) ≡ true → match P l₂ ≡ true
+match-++-lemma₂ P [] l₂ _ hyp = hyp
+match-++-lemma₂ P (x ∷ xs) l₂ hyp₁ hyp₂ = proof
+  where
+    lemma0 : P x ≡ false
+    lemma0 = proj₁ (not-or-lemma (P x) (match P xs) hyp₁)
+    
+    lemma1 : match P xs ≡ false
+    lemma1 = match-cons-lemma P x xs hyp₁
+
+    lemma2 : match P (xs ++ l₂) ≡ true
+    lemma2 = or-poe-lemma₁ (P x) (match P (xs ++ l₂)) hyp₂ lemma0
+
+    proof = match-++-lemma₂ P xs l₂ lemma1 lemma2
+
+
+length-range : (n : ℕ) → length (range n) ≡ n
+length-range 0 = refl
+length-range (suc n) = cong suc (length-range n)
+
+
++ₗ-preserves-≤ : {x y : ℕ} → (m : ℕ) → x ≤ y → m + x ≤ m + y
++ₗ-preserves-≤ 0 x≤y = x≤y
++ₗ-preserves-≤ (suc m) x≤y = s≤s (+ₗ-preserves-≤ m x≤y)
+
++ᵣ-preserves-≤ : {x y : ℕ} → (m : ℕ) → x ≤ y → x + m ≤ y + m
++ᵣ-preserves-≤ {x} {y} m x≤y = begin
+  x + m ≡⟨ +-comm x m ⟩
+  m + x ≤⟨ +ₗ-preserves-≤ m x≤y ⟩
+  m + y ≡⟨ +-comm m y ⟩
+  y + m ∎
+  where
+    open ≤-Reasoning
+
+
+*ₗ-preserves-≤ : {x y : ℕ} → (m : ℕ) → x ≤ y → m * x ≤ m * y
+*ₗ-preserves-≤ 0 _ = z≤n
+*ₗ-preserves-≤ {x} {y} (suc m) x≤y = begin
+  (1 + m) * x   ≡⟨ refl ⟩
+  x + (m * x)   ≤⟨ +ᵣ-preserves-≤ (m * x) x≤y ⟩
+  y + (m * x)   ≤⟨ +ₗ-preserves-≤ y ind ⟩
+  y + (m * y)   ≡⟨ refl ⟩
+  (1 + m) * y   ∎ 
+  where
+    open ≤-Reasoning
+
+    ind : (m * x) ≤ (m * y)
+    ind = *ₗ-preserves-≤ m x≤y
+
+
+*ᵣ-preserves-≤ : {x y : ℕ} → (m : ℕ) → x ≤ y → x * m ≤ y * m
+*ᵣ-preserves-≤ {x} {y} m x≤y = begin
+  x * m   ≡⟨ *-comm x m ⟩
+  m * x   ≤⟨ *ₗ-preserves-≤ m x≤y ⟩
+  m * y   ≡⟨ *-comm m y ⟩
+  y * m   ∎
+  where
+    open ≤-Reasoning
+
+
+
+offset-lemma : (n m x y : ℕ) → x < n → y < m → y + (x * m) < n * m
+offset-lemma n m x y x<n y<m = begin-strict
+  y + (x * m)   <⟨ +ᵣ-preserves-≤ (x * m) y<m ⟩
+  m + (x * m)   ≡⟨ refl ⟩
+  (1 + x) * m   ≤⟨ *ᵣ-preserves-≤ m x<n ⟩
+  n * m         ∎ 
+  where
+    open ≤-Reasoning
+
+range-index-lemma : {n x : ℕ} → x < n → x < length (range n)
+range-index-lemma {n} {x} x<n = begin-strict
+  x                  <⟨ x<n ⟩
+  n                  ≡⟨ ≡-sym (length-range n) ⟩
+  length (range n)   ∎
+  where
+    open ≤-Reasoning
+
+n<1+n : (n : ℕ) → n < 1 + n
+n<1+n 0 = (s≤s z≤n)
+n<1+n (suc n) = s≤s (n<1+n n)
+
+sub<-lemma : {n x : ℕ} → x < n → n - x > 0
+sub<-lemma {0}     {_} ()
+sub<-lemma {suc n} {0} 0<1+n = (s≤s z≤n)
+sub<-lemma {suc n} {suc x} (s≤s x<n) = sub<-lemma x<n
+
+sub≡-lemma : {n x : ℕ} → x ≤ n → n - x ≡ 0 → n ≡ x
+sub≡-lemma {0} {0} 0≤0 0-0≡0 = refl
+sub≡-lemma {0} {suc x} ()
+sub≡-lemma {suc n} {0} 0≤1+n ()
+sub≡-lemma {suc n} {suc x} (s≤s x≤n) n-x≡0 = cong suc (sub≡-lemma x≤n n-x≡0)
+
+sub≡-lemma2 : {n x y : ℕ} → n - x ≡ (1 + y) → n - (1 + x) ≡ y
+sub≡-lemma2 {n} {0} {y} n-0≡1+y = resp (λ a → a - 1 ≡ y) (≡-sym n-0≡1+y) refl
+sub≡-lemma2 {0} {suc x} {y} () 
+sub≡-lemma2 {suc n} {suc x} {y} 1+n-[1+x]≡1+y = sub≡-lemma2 {n} {x} {y} 1+n-[1+x]≡1+y
+
+
+sub-suc-lemma : {n x : ℕ} → x < n → Σ[ y ∈ ℕ ] ((n - x) ≡ (1 + y))
+sub-suc-lemma {0} {_} ()
+sub-suc-lemma {suc n} {0} 0<1+n = n , refl
+sub-suc-lemma {suc n} {suc x} (s≤s x<n) = sub-suc-lemma x<n
+
+sub-suc-lemma2 : {n x y : ℕ} → (n - x) ≡ (1 + y) → x < n
+sub-suc-lemma2 {0} {0} {_} ()
+sub-suc-lemma2 {0} {suc x} {_} ()
+sub-suc-lemma2 {suc n} {0} {_} _ = (s≤s z≤n)
+sub-suc-lemma2 {suc n} {suc x} {y} 1+n-[1+x]≡1+y = (s≤s (sub-suc-lemma2 1+n-[1+x]≡1+y))
+
+
+
+range-lookup : {n x : ℕ} → (x<|n| : x < length (range n)) → lookup< (range n) x x<|n| ≡ n - (1 + x)
+range-lookup {0} {_} ()
+range-lookup {suc n} {0} x<1+n = refl
+range-lookup {suc n} {suc x} (s≤s x<|n|) = range-lookup {n} {x} x<|n|
+
+range-lookup? : {n x : ℕ} → (x<|n| : x < length (range n)) → (range n) [ x ]? ≡ just (n - (1 + x))
+range-lookup? {0} {_} ()
+range-lookup? {suc n} {0} x<1+n = refl
+range-lookup? {suc n} {suc x} (s≤s x<|n|) = range-lookup? {n} {x} x<|n|
+
+
+
+range-lookup?-end₁ : (n : ℕ) → (range (1 + n)) [ n ]? ≡ just 0
+range-lookup?-end₁ 0       = refl
+range-lookup?-end₁ (suc n) = range-lookup?-end₁ n
+
+
+range-lookup?-end : {n x : ℕ} → (x<n : x < n) → (range n) [ (n - (1 + x)) ]? ≡ just x
+range-lookup?-end {0}     {_}     ()
+range-lookup?-end {suc n} {0}     _         = range-lookup?-end₁ (suc n)
+range-lookup?-end {suc n} {suc x} (s≤s x<n) = cases (ℕ-LEM (n - (1 + x)))
+  where
+    cases : (n - (1 + x) ≡ 0) ⊎ (Σ[ y ∈ ℕ ] (n - (1 + x) ≡ 1 + y)) → (range (1 + n)) [ ((1 + n) - (2 + x)) ]? ≡ just (1 + x)
+    cases (inj₁ n-[1+x]≡0) = 
+      (range (1 + n)) [ (n - (1 + x)) ]?    ≡⟨ cong (λ z → (range (1 + n)) [ z ]?) n-[1+x]≡0 ⟩
+      just n                                ≡⟨ cong just (sub≡-lemma x<n n-[1+x]≡0) ⟩
+      just (1 + x)                          ∎
+      where
+        open PropEq.≡-Reasoning
+    cases (inj₂ (y , n-[1+x]≡1+y)) =
+      (range (1 + n)) [ (n - (1 + x)) ]?  ≡⟨ cong (λ z → (range (1 + n)) [ z ]?) n-[1+x]≡1+y ⟩
+      (range (1 + n)) [ (1 + y) ]?        ≡⟨ refl ⟩
+      (range n) [ y ]?                    ≡⟨ cong (λ z → (range n) [ z ]?) (≡-sym sublemma3) ⟩
+      (range n) [ n - (2 + x) ]?          ≡⟨ range-lookup?-end {n} {suc x} 1+x<n ⟩
+      just (1 + x)                        ∎
+      where
+        open PropEq.≡-Reasoning
+
+        sublemma3 : n - (2 + x) ≡ y
+        sublemma3 = sub≡-lemma2 {n} {1 + x} {y} n-[1+x]≡1+y
+
+        1+x<n : 1 + x < n
+        1+x<n = sub-suc-lemma2 n-[1+x]≡1+y
+
+
+find-++-lemma : {A : Set} (P : A → Bool) → (l₁ l₂ : List A) → find P l₁ ≡ nothing → find P (l₁ ++ l₂) ≡ find P l₂
+find-++-lemma P []          l₂ _    = refl
+find-++-lemma P l₁@(x ∷ xs) l₂ hyp  =  proof
+  where
+    lemma1 : find P (l₁ ++ l₂) ≡ (if (P x) then (just x) else (find P (xs ++ l₂)))
+    lemma1 = refl
+
+    lemma2 : find P l₁ ≡ (if (P x) then (just x) else (find P xs))
+    lemma2 = refl
+
+    lemma3 : (find P l₁ ≡ just x) ⊎ (find P l₁ ≡ find P xs)
+    lemma3 = if-lemma (P x) (just x) (find P xs)
+
+    lemma4 : find P l₁ ≢ just x
+    lemma4 hyp2 = subproof
+      where
+        nothing≡just : nothing ≡ just x
+        nothing≡just = ≡-trans (≡-sym hyp) hyp2
+
+        nothing≢just : nothing ≢ just x
+        nothing≢just ()
+        
+        subproof = nothing≢just nothing≡just
+
+    lemma5 : find P l₁ ≡ find P xs
+    lemma5 = process-of-elimination lemma3 lemma4
+
+    lemma6 : find P xs ≡ nothing
+    lemma6 = ≡-trans (≡-sym lemma5) hyp
+
+    lemma7 : find P (xs ++ l₂) ≡ find P l₂
+    lemma7 = find-++-lemma P xs l₂ lemma6
+
+    lemma8 : P x ≢ true
+    lemma8 Px≡true = lemma4 (cong (λ w → if w then (just x) else (find P xs)) Px≡true)
+
+    lemma9 : P x ≡ false
+    lemma9 = ¬not-lemma lemma8
+
+    lemma10 : find P (l₁ ++ l₂) ≡ find P (xs ++ l₂)
+    lemma10 = cong (λ w → if w then (just x) else (find P (xs ++ l₂))) lemma9
+
+    proof = ≡-trans lemma10 lemma7
+
+nothing≢just : {A : Set} → (a : A) → nothing ≢ just a
+nothing≢just a ()
+
+find-cons-lemma : {A : Set} (P : A → Bool) → (x : A) → (xs : List A) → find P (x ∷ xs) ≡ nothing → P x ≡ false
+find-cons-lemma P x xs hyp = proof
+  where
+    lemma1 : find P (x ∷ xs) ≡ (if (P x) then (just x) else (find P xs))
+    lemma1 = refl
+
+    lemma2 : P x ≢ true
+    lemma2 Px≡true = subproof
+      where
+        sublemma1 : find P (x ∷ xs) ≡ just x
+        sublemma1 = cong (λ w → if w then (just x) else (find P xs)) Px≡true
+
+        subproof = nothing≢just x (≡-trans (≡-sym hyp) sublemma1)
+
+    proof = ¬not-lemma lemma2
+
+
+find-match-lemma : {A : Set} (P : A → Bool) → (l : List A) → find P l ≡ nothing → match P l ≡ false
+find-match-lemma _ []       _   = refl
+find-match-lemma P l@(x ∷ xs) hyp = proof
+  where
+    lemma2 : P x ≡ false
+    lemma2 = find-cons-lemma P x xs hyp
+
+    lemma3 : find P l ≡ find P xs
+    lemma3 = cong (λ w → if w then (just x) else (find P xs)) lemma2
+
+    lemma4 : find P xs ≡ nothing
+    lemma4 = ≡-trans (≡-sym lemma3) hyp
+
+    lemma5 : match P xs ≡ false
+    lemma5 = find-match-lemma P xs lemma4
+
+    proof : match P l ≡ false
+    proof = ≡-trans (cong (λ w → w or (match P xs)) lemma2) (cong (λ w → false or w) lemma5)
+
+get-map-lemma : {A B : Set} (f : A → B) (l : List A) (i : ℕ) → (map f l) [ i ]? ≡ Maybe-map f (l [ i ]?)
+get-map-lemma f [] _ = refl
+get-map-lemma f (x ∷ xs) 0 = refl
+get-map-lemma f l@(x ∷ xs) (suc i) = get-map-lemma f xs i
+
+suc<-lemma : {m n : ℕ} → m < n → Σ[ k ∈ ℕ ] (n ≡ 1 + k)
+suc<-lemma {_} {0} ()
+suc<-lemma {_} {suc n} _ = n , refl
