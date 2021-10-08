@@ -1,7 +1,10 @@
 module TuringMachine4 where
 
 open import Basic hiding (_^_ ; raise ; list-product ; filter) renaming (func-rep to _^_)
+open import Data.Nat.Base using (NonZero)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality as PropEq
+open import Relation.Nullary.Decidable.Core using (False)
 
 data TM-δ : Set where
   δ : ℕ → ℕ → ℕ → ℕ → Bool → TM-δ
@@ -764,72 +767,398 @@ offset-uniqueness-lemma {n} {m} {x₁} {y₁} {x₂} {y₂} y₁<m y₂<m w₁�
     sublemma3 : y₂ ≡ w₂' % (1 + m') × x₂ ≡ w₂' / (1 + m')
     sublemma3 = divmod-lemma w₂' x₂ y₂ m' y₂<1+m' refl
 
-    x₁≡w₁'/[1+m'] = proj₂ sublemma2
-    x₂≡w₂'/[1+m'] = proj₂ sublemma3
-
-    x₁≡x₂ : x₁ ≡ x₂
-    x₁≡x₂ = ≡-trans x₁≡w₁'/[1+m'] (≡-trans (cong (λ h → h / (1 + m')) w₁'≡w₂') (≡-sym x₂≡w₂'/[1+m']))
-
-    y₁≡y₂ =  ≡-trans (proj₁ sublemma2) (≡-trans (cong (λ h → h % (1 + m')) w₁'≡w₂') (≡-sym (proj₁ sublemma3)))
+    x₁≡x₂ = ≡-trans (proj₂ sublemma2) (≡-trans (cong (λ h → h / (1 + m')) w₁'≡w₂') (≡-sym (proj₂ sublemma3)))
+    y₁≡y₂ = ≡-trans (proj₁ sublemma2) (≡-trans (cong (λ h → h % (1 + m')) w₁'≡w₂') (≡-sym (proj₁ sublemma3)))
 
 
 offset-uniqueness-lemma2 : {n m x₁ y₁ x₂ y₂ : ℕ} →  (y₁ < m) → (y₂ < m) → ¬ (x₁ ≡ x₂ × y₁ ≡ y₂) → y₁ + (x₁ * m) ≢ y₂ + (x₂ * m)
-offset-uniqueness-lemma2 {n} {m} {x₁} {y₁} {x₂} {y₂} y₁<m  y₂<m = contrapositive (offset-uniqueness-lemma {n} {m} {x₁} {y₁} {x₂} {y₂} y₁<m y₂<m) {- hyp w₁≡w₂ = contradiction
-  where
-    w₁ = y₁ + (x₁ * m)
-    w₂ = y₂ + (x₂ * m)
+offset-uniqueness-lemma2 {n} {m} {x₁} {y₁} {x₂} {y₂} y₁<m  y₂<m = contrapositive (offset-uniqueness-lemma {n} {m} {x₁} {y₁} {x₂} {y₂} y₁<m y₂<m)
 
+ℕ-¬¬ : (x y : ℕ) → ¬ (¬ (x ≡ y)) → x ≡ y
+ℕ-¬¬ 0       0 ¬¬0≡0 = refl
+ℕ-¬¬ (suc x) 0 ¬¬1+x≡0 = ⊥-elim (¬¬1+x≡0 ¬1+x≡0)
+  where
+    ¬1+x≡0 : (1 + x) ≢ 0
+    ¬1+x≡0 ()
+ℕ-¬¬ 0 (suc y) ¬¬0≡1+y = ⊥-elim (¬¬0≡1+y ¬0≡1+y)
+  where
+    ¬0≡1+y : 0 ≢ (1 + y)
+    ¬0≡1+y ()
+ℕ-¬¬ (suc x) (suc y) ¬¬1+x≡1+y = 1+x≡1+y
+  where
+    ¬¬x≡y : ¬ (¬ (x ≡ y))
+    ¬¬x≡y ¬x≡y = contradiction
+      where
+        ¬1+x≡1+y : ¬ (1 + x ≡ 1 + y)
+        ¬1+x≡1+y 1+x≡1+y = ¬x≡y (suc-injective 1+x≡1+y)
+        
+        contradiction = ¬¬1+x≡1+y ¬1+x≡1+y
+    
+    x≡y : x ≡ y
+    x≡y = ℕ-¬¬ x y ¬¬x≡y
+
+    1+x≡1+y = cong suc x≡y
+
+sub-suc-lemma5 : (x y : ℕ) → x < 1 + y → x ≤ y
+sub-suc-lemma5 x y (s≤s x≤y) = x≤y
+
++-injective : (m : ℕ) → {x y : ℕ} → m + x ≡ m + y → x ≡ y
++-injective 0       x≡y     = x≡y
++-injective (suc m) 1+x≡1+y = +-injective m (suc-injective 1+x≡1+y)
+
+
+
+
+
+*-injectiveₗ : (m : ℕ) → {x y : ℕ} → (1 + m) * x ≡ (1 + m) * y → x ≡ y
+*-injectiveₗ m {0}     {0} _   = refl
+*-injectiveₗ m {suc x} {0} hyp = ⊥-elim contradiction
+  where
+    sublemma1 : (1 + m) * (1 + x) ≡ 1 + (x + m * (1 + x))
+    sublemma1 = refl
+
+    sublemma2 : (1 + m) * (1 + x) ≢ 0
+    sublemma2 ()
+
+    sublemma3 : (1 + m) * 0 ≡ 0
+    sublemma3 = *-zeroʳ (1 + m)
+
+    sublemma4 : (1 + m) * (1 + x) ≡ 0
+    sublemma4 = ≡-trans hyp sublemma3
+
+    contradiction = sublemma2 sublemma4
+*-injectiveₗ m {0} {suc y} hyp = ⊥-elim contradiction
+  where
+    sublemma1 : 0 ≡ (1 + m) * 0
+    sublemma1 = ≡-sym (*-zeroʳ (1 + m))
+
+    sublemma2 : 0 ≢ (1 + m) * (1 + y)
+    sublemma2 ()
+
+    sublemma3 : 0 ≡ (1 + m) * (1 + y)
+    sublemma3 = ≡-trans sublemma1 hyp
+
+    contradiction = sublemma2 sublemma3
+*-injectiveₗ m {suc x} {suc y} hyp = proof
+  where
+    sublemma1 : (1 + m) + x * (1 + m) ≡ (1 + m) + y * (1 + m)
+    sublemma1 =
+      (1 + m) + x * (1 + m) ≡⟨ refl ⟩
+      (1 + x) * (1 + m)     ≡⟨ *-comm (1 + x) (1 + m) ⟩
+      (1 + m) * (1 + x)     ≡⟨ hyp ⟩
+      (1 + m) * (1 + y)     ≡⟨ *-comm (1 + m) (1 + y) ⟩
+      (1 + y) * (1 + m)     ≡⟨ refl ⟩
+      (1 + m) + y * (1 + m) ∎
+      where
+        open PropEq.≡-Reasoning
+
+    sublemma2 : (1 + m) * x ≡ (1 + m) * y
+    sublemma2 =
+      (1 + m) * x  ≡⟨ *-comm (1 + m) x ⟩
+      x * (1 + m)  ≡⟨ +-injective (1 + m) sublemma1 ⟩
+      y * (1 + m)  ≡⟨ *-comm y (1 + m) ⟩
+      (1 + m) * y  ∎
+      where
+        open PropEq.≡-Reasoning
+
+    proof = cong suc (*-injectiveₗ m {x} {y} sublemma2)
+
+
+*-injectiveᵣ : (m : ℕ) → {x y : ℕ} → x * (1 + m) ≡ y * (1 + m) → x ≡ y
+*-injectiveᵣ m {x} {y} hyp = *-injectiveₗ m [1+m]*x≡[1+m]*y 
+  where
+    [1+m]*x≡[1+m]*y : (1 + m) * x ≡ (1 + m) * y
+    [1+m]*x≡[1+m]*y =
+      (1 + m) * x   ≡⟨ *-comm (1 + m) x ⟩
+      x * (1 + m)   ≡⟨ hyp ⟩
+      y * (1 + m)   ≡⟨ *-comm y (1 + m) ⟩
+      (1 + m) * y   ∎
+      where
+        open PropEq.≡-Reasoning
+
+
+div<-lemma : (x y m : ℕ) → y < (1 + m) → (y + x * (1 + m)) / (1 + m) ≡ x
+div<-lemma x y m y<1+m = ≡-sym (proj₂ (divmod-lemma  (y + x * (1 + m)) x y m y<1+m refl))
+  
+mod<-lemma : (x y m : ℕ) → y < (1 + m) → (y + x * (1 + m)) % (1 + m) ≡ y
+mod<-lemma x y m y<1+m = ≡-sym (proj₁ (divmod-lemma  (y + x * (1 + m)) x y m y<1+m refl))
+
+
+{-
+-- Contrapositive of injectivity
+divmod-uniqueness3 : (x y m : ℕ) → x ≢ y → x * (1 + m) ≢ y * (1 + m)
+divmod-uniqueness3 x y m x≢y x*[1+m]≡y*[1+m] = x≢y (*-injectiveᵣ m x*[1+m]≡y*[1+m])
+-}
+{-
+  
+-}
+
+divmod-uniqueness4 : (x₁ x₂ y m : ℕ) → y + x₁ * m ≢ y + x₂ * m → x₁ ≢ x₂
+divmod-uniqueness4 x₁ x₂ y m hyp x₁≡x₂ = hyp (cong (λ x → y + x * m) x₁≡x₂)
+
+divmod-uniqueness5 : (x y₁ y₂ m : ℕ) → y₁ + x * m ≢ y₂ + x * m → y₁ ≢ y₂
+divmod-uniqueness5 x y₁ y₂ m hyp y₁≡y₂ = hyp (cong (λ y → y + x * m) y₁≡y₂)
+
+divmod-uniqueness6 : (x₁ x₂ y₁ y₂ m : ℕ) → y₁ < (1 + m) → y₂ < (1 + m) → (y₁ + x₁ * (1 + m)) / (1 + m) ≢ (y₂ + x₂ * (1 + m)) / (1 + m) → x₁ ≢ x₂
+divmod-uniqueness6 x₁ x₂ y₁ y₂ m y₁<1+m y₂<1+m hyp x₁≡x₂ = contradiction
+  where
+    sublemma1 : (y₁ + x₁ * (1 + m)) / (1 + m) ≡ x₁
+    sublemma1 = div<-lemma x₁ y₁ m y₁<1+m
+
+    sublemma2 : (y₂ + x₂ * (1 + m)) / (1 + m) ≡ x₂
+    sublemma2 = div<-lemma x₂ y₂ m y₂<1+m
+
+    sublemma3 : (y₁ + x₁ * (1 + m)) / (1 + m) ≡ (y₂ + x₂ * (1 + m)) / (1 + m)
+    sublemma3 =
+      (y₁ + x₁ * (1 + m)) / (1 + m)   ≡⟨ div<-lemma x₁ y₁ m y₁<1+m ⟩
+      x₁                              ≡⟨ x₁≡x₂ ⟩
+      x₂                              ≡⟨ ≡-sym (div<-lemma x₂ y₂ m y₂<1+m) ⟩
+      (y₂ + x₂ * (1 + m)) / (1 + m)   ∎
+      where
+        open PropEq.≡-Reasoning
+    
+    contradiction = hyp sublemma3
+
+ℕ≡-LEM : (x y : ℕ) → (x ≡ y) ⊎ (x ≢ y)
+ℕ≡-LEM 0 0 = inj₁ refl
+ℕ≡-LEM (suc x) 0 = inj₂ (λ ())
+ℕ≡-LEM 0 (suc y) = inj₂ (λ ())
+ℕ≡-LEM (suc x) (suc y) = sublemma (ℕ≡-LEM x y)
+  where
+    sublemma : (x ≡ y) ⊎ (x ≢ y) → (1 + x ≡ 1 + y) ⊎ (1 + x ≢ 1 + y)
+    sublemma (inj₁ x≡y) = inj₁ (cong suc x≡y)
+    sublemma (inj₂ x≢y) = inj₂ (λ 1+x≡1+y → x≢y (suc-injective 1+x≡1+y))
+
+
+
+divmod-uniqueness7 : (x₁ x₂ y₁ y₂ m : ℕ) → y₁ + x₁ * m ≢ y₂ + x₂ * m → y₁ ≢ y₂ ⊎ x₁ ≢ x₂
+divmod-uniqueness7 x₁ x₂ y₁ y₂ m hyp = sublemma (ℕ≡-LEM x₁ x₂)
+  where
+    sublemma : (x₁ ≡ x₂) ⊎ (x₁ ≢ x₂) → y₁ ≢ y₂ ⊎ x₁ ≢ x₂
+    sublemma (inj₁ x₁≡x₂) = subsublemma (ℕ≡-LEM y₁ y₂)
+      where
+        subsublemma : (y₁ ≡ y₂) ⊎ (y₁ ≢ y₂) → y₁ ≢ y₂ ⊎ x₁ ≢ x₂
+        subsublemma (inj₁ y₁≡y₂) = ⊥-elim (hyp subsubsublemma)
+          where
+            subsubsublemma : y₁ + x₁ * m ≡ y₂ + x₂ * m
+            subsubsublemma =
+              y₁ + x₁ * m   ≡⟨ cong (λ y → y + x₁ * m) y₁≡y₂ ⟩
+              y₂ + x₁ * m   ≡⟨ cong (λ x → y₂ + x * m) x₁≡x₂ ⟩
+              y₂ + x₂ * m   ∎
+              where
+                open PropEq.≡-Reasoning
+        subsublemma (inj₂ y₁≢y₂) = inj₁ y₁≢y₂
+        subproof = subsublemma (ℕ≡-LEM y₁ y₂)
+    sublemma (inj₂ x₁≢x₂) = inj₂ x₁≢x₂
+
+
+divmod-uniqueness2 : (x y m : ℕ) → x ≢ y → (x % (1 + m) ≢ y % (1 + m)) ⊎ ((x / (1 + m)) ≢ (y / (1 + m)))
+divmod-uniqueness2 x y m x≢y = proof
+  where
+    x-def : x ≡ (x % (1 + m)) + ((x / (1 + m)) * (1 + m))
+    x-def = m≡m%n+[m/n]*n x m
+
+    y-def : y ≡ (y % (1 + m)) + ((y / (1 + m)) * (1 + m))
+    y-def = m≡m%n+[m/n]*n y m
+
+    sublemma : ((x % (1 + m)) + ((x / (1 + m)) * (1 + m))) ≢ ((y % (1 + m)) + ((y / (1 + m)) * (1 + m)))
+    sublemma hyp = x≢y (≡-trans x-def (≡-trans hyp (≡-sym y-def)))
+    
+    proof = divmod-uniqueness7 (x / (1 + m)) (y / (1 + m)) (x % (1 + m)) (y % (1 + m)) (1 + m) sublemma
+
+x≢0→NonZero-x : (x : ℕ) → x ≢ 0 → NonZero x
+x≢0→NonZero-x 0         0≢0 = ⊥-elim (0≢0 refl)
+x≢0→NonZero-x (suc x) 1+x≢0 = tt
+
+x≢0→x≠0 : (x : ℕ) → x ≢ 0 → False (x ≟ 0)
+x≢0→x≠0  0       0≢0 = ⊥-elim (0≢0 refl)
+x≢0→x≠0 (suc x) 1+x≢0 = tt
+
+divmod-uniqueness2< : (x y m : ℕ) → (m≠0 : False (m ≟ 0)) → x ≢ y → (_%_ x m { m≠0 } ≢ _%_ y m { m≠0 }) ⊎ ((_/_ x m {m≠0}) ≢ (_/_ y m {m≠0}))
+divmod-uniqueness2< x y 0 ()
+divmod-uniqueness2< x y (suc m) 1+m≢0 x≢y = divmod-uniqueness2 x y m x≢y
+
+i<n*m→n≢0 : (i n m : ℕ) → i < n * m → n ≢ 0
+i<n*m→n≢0 _ 0 _ ()
+i<n*m→n≢0 _ (suc n) _ _ ()
+
+i<n*m→m≢0 : (i n m : ℕ) → i < n * m → m ≢ 0
+i<n*m→m≢0 i n m i<n*m = i<n*m→n≢0 i m n (resp (λ w → i < w) (*-comm n m) i<n*m)
+
+/-<-≤-lemma : (x y m : ℕ) → (m≠0 : False (m ≟ 0)) → x ≤ y → _/_ x m {m≠0} ≤ _/_ y m {m≠0}
+/-<-≤-lemma x y m m≠0 x≤y = /-mono-≤ {x} {y} {m} {m} {m≠0} {m≠0} x≤y ≤-refl
+
+*<-lemma :
+  (i n m : ℕ) →
+  (i<n*m : i < n * m) →
+  let m≠0 = (x≢0→x≠0 m (i<n*m→m≢0 i n m i<n*m))
+  in
+  (_/_ i m {m≠0}) < n
+*<-lemma  i n 0 i<n*0 = ⊥-elim (x≮0 (resp (λ w → i < w) (*-zeroʳ n) i<n*0))
+*<-lemma i 0 (suc m) i<0*[1+m] = ⊥-elim (x≮0 i<0*[1+m])
+*<-lemma 0 (suc n) (suc m) hyp = s≤s z≤n
+*<-lemma (suc i) (suc n) (suc m) hyp = proof
+  where
+    1+m≢0 : 1 + m ≢ 0
+    1+m≢0 ()
+
+    1+m≠0 : False (1 + m ≟ 0)
+    1+m≠0 = x≢0→x≠0 (1 + m) 1+m≢0
+
+    sublemma≤ : (1 + i) / (1 + m) ≤ (1 + n)
+    sublemma≤ = begin
+      (1 + i) / (1 + m)               ≤⟨ /-<-≤-lemma (1 + i) ((1 + n) * (1 + m)) (1 + m) 1+m≠0 (<⇒≤ hyp) ⟩
+      ((1 + n) * (1 + m)) / (1 + m)   ≡⟨ m*n/n≡m (1 + n) (1 + m) ⟩
+      (1 + n)                         ∎
+      where
+        open ≤-Reasoning
+
+    sublemma≢ : (1 + i) / (1 + m) ≢ (1 + n)
+    sublemma≢ hyp2 = contradiction
+      where
+        subsublemma : (1 + n) * (1 + m) < (1 + n) * (1 + m)
+        subsublemma = begin-strict
+          (1 + n) * (1 + m)                ≡⟨ ≡-sym (cong (λ w → w * (1 + m)) hyp2) ⟩
+          ((1 + i) / (1 + m)) * (1 + m)    ≤⟨ m/n*n≤m (1 + i) (1 + m) ⟩
+          1 + i                            <⟨ hyp ⟩
+          (1 + n) * (1 + m)                ∎
+          where
+            open ≤-Reasoning
+            
+        contradiction = <-irrefl refl subsublemma
+   
+    proof = ≤∧≢⇒< sublemma≤ sublemma≢
+
+
+product-uniqueness3 :
+  (n m i : ℕ) →
+  (i<n*m : i < n * m) →
+  let m≠0 = (x≢0→x≠0 m (i<n*m→m≢0 i n m i<n*m))
+  in
+  ((range n) ⊗ (range m)) [ i ]? ≡ just (n - (1 + (_/_ i m {m≠0})) , m - (1 + (_%_ i m {m≠0})))
+product-uniqueness3 n m i i<n*m = proof
+  where
+    m≢0 : m ≢ 0
+    m≢0 = i<n*m→m≢0 i n m i<n*m
+
+    m≠0 : False (m ≟ 0)
+    m≠0 = x≢0→x≠0 m m≢0
+
+    m>0 : m > 0
+    m>0 = n≢0⇒n>0 m≢0
+
+    ∃m',m≡1+m' : Σ[ m' ∈ ℕ ] (m ≡ 1 + m')
+    ∃m',m≡1+m' = suc<-lemma m>0
+
+    m' = proj₁ ∃m',m≡1+m'
+    m≡1+m' = proj₂ ∃m',m≡1+m'
+
+    sublemma : i ≡ (i % (1 + m')) + (i / (1 + m')) * (1 + m')
+    sublemma = m≡m%n+[m/n]*n i m'
+
+    i%[1+m']<1+m' : i % (1 + m') < (1 + m')
+    i%[1+m']<1+m' = m%n<n i m'
+
+
+    i/[1+m']<n : i / (1 + m') < n
+    i/[1+m']<n = *<-lemma i n (1 + m') (resp (λ w → i < n * w) m≡1+m' i<n*m)
+   
+    {- product-lookup : {n m x y : ℕ} → (x<n : x < n) → (y<m : y < m) → ((range n) ⊗ (range m)) [ (y + (x * m)) ]? ≡ just (n - (1 + x) , m - (1 + y)) -}
+    sublemma2 : ((range n) ⊗ (range (1 + m'))) [ ((i % (1 + m')) + ((i / (1 + m')) * (1 + m'))) ]? ≡ just (n - (1 + (i / (1 + m'))) , (1 + m') - (1 + (i % (1 + m'))))
+    sublemma2 = product-lookup i/[1+m']<n i%[1+m']<1+m'
+
+    sublemma3 : ((range n) ⊗ (range (1 + m'))) [ i ]? ≡ ((range n) ⊗ (range (1 + m'))) [ ((i % (1 + m')) + ((i / (1 + m')) * (1 + m'))) ]?
+    sublemma3 = cong (λ w → ((range n) ⊗ (range (1 + m'))) [ w ]?) sublemma
+
+    sublemma4 : just (n - (1 + (i / (1 + m'))) , (1 + m') - (1 + (i % (1 + m')))) ≡ just (n - (1 + (i / m)) , m - (1 + (i % m)))
+    sublemma4 = cong (λ w → just (n - (1 + (i / w)) , w - (1 + (i % w)))) (≡-sym m≡1+m')
+
+    sublemma5 : ((range n) ⊗ (range m)) [ i ]? ≡ ((range n) ⊗ (range (1 + m'))) [ i ]?
+    sublemma5 = cong (λ w → ((range n) ⊗ (range w)) [ i ]?) m≡1+m'
+
+    proof = ≡-trans sublemma5 (≡-trans sublemma3 (≡-trans sublemma2 sublemma4))
+
+{-
+product-uniqueness : (n m x y : ℕ) → x < n → y < m → (i : ℕ) → ((range n) ⊗ (range m)) [ i ]? ≡ just (x , y) → i ≡ (m - (1 + y)) + ((n - (1 + x)) * m)
+product-uniqueness n m x y x<n y<m i n⊗m[i]≡[x,y] = proof
+  where
+    v  = (m - (1 + y)) + ((n - (1 + x)) * m)
+
+    sublemma-range : ((range n) ⊗ (range m)) [ i ]? ≡ ((range n) ⊗ (range m)) [ v ]?
+    sublemma-range =
+      ((range n) ⊗ (range m)) [ i ]?   ≡⟨ n⊗m[i]≡[x,y] ⟩
+      just (x , y)                     ≡⟨ ≡-sym (product-lookup2 x<n y<m) ⟩
+      ((range n) ⊗ (range m)) [ v ]?   ∎
+      where
+        open PropEq.≡-Reasoning
+
+m-[1+y]<m : m - (1 + y) < m
+    m-[1+y]<m = sub<-lemma2 y<m
 
     sublemma1 : Σ[ m' ∈ ℕ ] (m ≡ 1 + m')
-    sublemma1 = suc<-lemma y₁<m
+    sublemma1 = suc<-lemma y<m
 
     m' = proj₁ sublemma1
     m≡1+m' = proj₂ sublemma1
 
-    y₁<1+m' : y₁ < 1 + m'
-    y₁<1+m' = begin-strict
-      y₁       <⟨ y₁<m ⟩
-      m        ≡⟨ m≡1+m' ⟩
+    y≤1+m' : y ≤ 1 + m'
+    y≤1+m' = begin
+      y      <⟨ y<m ⟩
+      m      ≡⟨ m≡1+m' ⟩
       1 + m'   ∎
       where
         open ≤-Reasoning
 
-    y₂<1+m' : y₂ < 1 + m'
-    y₂<1+m' = begin-strict
-      y₂       <⟨ y₂<m ⟩
-      m        ≡⟨ m≡1+m' ⟩
-      1 + m'   ∎
+    sublemma2 : (1 + m') - (1 + y) < (1 + m')
+    sublemma2 = resp (λ w → w - (1 + y) < w) m≡1+m' m-[1+y]<m
+
+    m-[1+y]%m≡m-[1+y] : (m - (1 + y)) % m ≡ (m - (1 + y))
+    m-[1+y]%m≡m-[1+y] =
+      (m - (1 + y)) % m                ≡⟨ cong (λ w → (w - (1 + y)) % w) m≡1+m' ⟩
+      ((1 + m') - (1 + y)) % (1 + m')  ≡⟨ m≤n⇒m%n≡m (sub-suc-lemma5 ((1 + m') - (1 + y)) m' sublemma2) ⟩
+      (1 + m') - (1 + y)               ≡⟨ cong (λ w  → w - (1 + y)) (≡-sym m≡1+m') ⟩
+      m - (1 + y)                      ∎
       where
-        open ≤-Reasoning
+        open PropEq.≡-Reasoning
+      
+    v%m≡m-[1+y]%m : v % m ≡ (m - (1 + y)) % m
+    v%m≡m-[1+y]%m =
+      v % m                                                          ≡⟨ refl ⟩
+      ((m - (1 + y)) + ((n - (1 + x)) * m)) % m                      ≡⟨ cong (λ w → ((w - (1 + y)) + ((n - (1 + x)) * w)) % w) m≡1+m' ⟩
+      (((1 + m') - (1 + y)) + ((n - (1 + x)) * (1 + m'))) % (1 + m') ≡⟨ [m+kn]%n≡m%n ((1 + m') - (1 + y)) (n - (1 + x)) m' ⟩
+      ((1 + m') - (1 + y)) % (1 + m')                                ≡⟨ cong (λ w → (w - (1 + y)) % w) (≡-sym m≡1+m') ⟩ 
+      (m - (1 + y)) % m                                              ∎
+      where
+        open PropEq.≡-Reasoning
+
+    v%m≡m-[1+y] : v % m ≡ (m - (1 + y))
+    v%m≡m-[1+y] = ≡-trans v%m≡m-[1+y]%m m-[1+y]%m≡m-[1+y]
+
+
+    ¬¬i≡v : ¬ (¬ (i ≡ v))
+    ¬¬i≡v ¬i≡v = contradiction
+      where
+        -- if i ≢ v then
+        sublemma : (i % m ≢ v % m) ⊎ (i / m ≢ v / m)
+        sublemma = divmod-uniqueness2< i v m (x≢0→x≠0 m (m<n⇒n≢0 y<m)) ¬i≡v
+
+        sublemma2 : ((i % m ≢ v % m) ⊎ (i / m ≢ v / m)) → (((range n) ⊗ (range m)) [ i ]? ≢ ((range n) ⊗ (range m)) [ v ]?) 
+        sublemma2 (inj₁ i%m≢v%m) = proof
+          where
+            proof
+
+        contradiction = (sublemma2 sublemma) sublemma-range
     
 
-    w₁' = y₁ + (x₁ * (1 + m'))
-    w₂' = y₂ + (x₂ * (1 + m'))
-
-    w₁≡w₁' : w₁ ≡ w₁'
-    w₁≡w₁' = cong (λ h → y₁ + (x₁ * h)) m≡1+m'
-
-    w₂≡w₂' : w₂ ≡ w₂'
-    w₂≡w₂' = cong (λ h → y₂ + (x₂ * h)) m≡1+m'
-
-    w₁'≡w₂' : w₁' ≡ w₂'
-    w₁'≡w₂' = ≡-trans (≡-sym w₁≡w₁') (≡-trans w₁≡w₂ w₂≡w₂')
     
-    sublemma2 : y₁ ≡ w₁' % (1 + m') × x₁ ≡ w₁' / (1 + m')
-    sublemma2 = divmod-lemma w₁' x₁ y₁ m' y₁<1+m' refl
+{-
+    sublemma2 : v / m ≡ ((m - (1 + y)) / m) + ((n - (1 + x)) / m)
+    sublemma2 =
+      v / m                                                             ≡⟨ cong (λ w → ((w - (1 + y)) + ((n - (1 + x)) * w)) / w) m≡1+m' ⟩
+      (((1 + m') - (1 + y)) + ((n - (1 + x)) * (1 + m'))) / (1 + m')    ≡⟨ 
+-}
 
-    sublemma3 : y₂ ≡ w₂' % (1 + m') × x₂ ≡ w₂' / (1 + m')
-    sublemma3 = divmod-lemma w₂' x₂ y₂ m' y₂<1+m' refl
-
-    x₁≡w₁'/[1+m'] = proj₂ sublemma2
-    x₂≡w₂'/[1+m'] = proj₂ sublemma3
-
-    x₁≡x₂ : x₁ ≡ x₂
-    x₁≡x₂ = ≡-trans x₁≡w₁'/[1+m'] (≡-trans (cong (λ h → h / (1 + m')) w₁'≡w₂') (≡-sym x₂≡w₂'/[1+m']))
-
-    y₁≡y₂ =  ≡-trans (proj₁ sublemma2) (≡-trans (cong (λ h → h % (1 + m')) w₁'≡w₂') (≡-sym (proj₁ sublemma3)))
-    
-    contradiction = hyp (x₁≡x₂ , y₁≡y₂)
+    proof
 -}
 
 {-
