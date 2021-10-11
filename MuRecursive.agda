@@ -1,8 +1,10 @@
 module MuRecursive where
 
-open import Basic hiding ([_]) renaming (Vec-get to _[_])
+open import Basic hiding ([_])
 open import Data.Vec using (head)
 open import PR
+open import Util.Arithmetic
+open import Util.Vec renaming (Vec-get to _[_])
 
 -- The "mu" is for all the mutual recursion I needed to make the definitions and proofs pass termination check...
 

@@ -6,6 +6,7 @@ open import MuRecursive
 open import MuRecursive.Properties
 open import MuRecursive.Examples.HaltExample
 open import MuRecursive.Examples.LoopExample2
+open import Util.Vec
 
 {-
   This is to help construct the "diagonalization gadget" K for proving the undecidability of the halting problem

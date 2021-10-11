@@ -1,6 +1,7 @@
 module TuringMachine1 where
 
 open import Basic
+open import Util.Fin
 
 record TuringMachine : Set₁ where
   field

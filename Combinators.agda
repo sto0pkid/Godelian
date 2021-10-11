@@ -1,6 +1,9 @@
 module Combinators where
 
-open import Basic hiding ([_] ; subst ; _^_) renaming (func-rep to _^_)
+open import Basic hiding ([_] ; _^_) renaming (func-rep to _^_)
+open import Util.Arithmetic
+open import Util.DependentIf
+open import Util.Vec
 
 data Bin (A : Set) : Set where
   _∙_ : Bin A → Bin A → Bin A

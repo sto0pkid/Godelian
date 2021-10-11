@@ -3,6 +3,8 @@ module TuringMachine.Examples where
 open import Basic renaming (ℕ to Nat)
 open import TuringMachine3
 open import TuringMachine.Properties
+open import Util.Arithmetic
+open import Util.List
 
 {-
 TODO: offload the TM descriptions into some standard file format

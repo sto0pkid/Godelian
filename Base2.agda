@@ -1,6 +1,8 @@
 module Base2 where
 
 open import Basic
+open import Util.Bool
+open import Util.BoolCircuit
 
 -- output: sum , carry
 base2+₁ : Bool → Bool → Bool × Bool

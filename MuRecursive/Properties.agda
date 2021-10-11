@@ -1,9 +1,12 @@
 module MuRecursive.Properties where
 
-open import Basic hiding ([_] ; map ; foldr) renaming (Vec-get to _[_])
+open import Basic hiding ([_] ; map ; foldr)
 open import Data.Vec using (map ; foldr ; head ; tail)
 open import MuRecursive
 open import PR
+open import Util.Arithmetic
+open import Util.Bool
+open import Util.Vec renaming (Vec-get to _[_])
 
 {-
  Proof that the μ-recursive functions are actually functions

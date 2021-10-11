@@ -2,6 +2,7 @@ module AlgorithmicRandomness where
 
 open import Basic
 open import TuringMachine3 using (TM ; TM-state ; TM-run)
+open import Util.List
 
 {-
   This isn't an adequate definition because the sequence S is already definitionally computable.

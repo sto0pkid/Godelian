@@ -1,6 +1,11 @@
 module PidgeonholeInfinite where
 
 open import Basic renaming (lookup to _[_]) hiding ([_])
+open import Util.Arithmetic
+open import Util.BinN
+open import Util.List
+open import Util.List.Properties
+open import Util.Vec
 
 {-
 func-min : (f : ℕ → ℕ) → Σ[ x ∈ ℕ ] ((x' : ℕ) → (f x') ≥ (f x))

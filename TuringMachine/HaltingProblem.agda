@@ -1,8 +1,10 @@
 module TuringMachine.HaltingProblem where
 
-open import Basic renaming (ℕ to Nat)
+open import Basic renaming (ℕ to Nat) hiding ([_])
 open import TuringMachine3
 open import TuringMachine.Properties
+open import Util.BoolProp
+open import Util.List
 
 
 {-

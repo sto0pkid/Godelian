@@ -1,7 +1,8 @@
 module PR where
 
-open import Basic hiding ([_] ; map) renaming (Vec-get to _[_])
+open import Basic hiding ([_] ; map)
 open import Data.Vec using (map)
+open import Util.Vec renaming (Vec-get to _[_])
 
 data PR : ℕ → Set where
   zero : PR 1

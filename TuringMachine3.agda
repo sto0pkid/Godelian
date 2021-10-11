@@ -1,7 +1,11 @@
 module TuringMachine3 where
 
-open import Basic hiding (raise) renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM ; Fin-raise' to raise)
-
+open import Basic hiding (raise) renaming (ℕ to Nat)
+open import Util.Arithmetic
+open import Util.BoolProp
+open import Util.DependentIf
+open import Util.Fin renaming (Fin-raise' to raise)
+open import Util.List
 
 {-
   This represents the instructions for an individual transition
@@ -381,7 +385,7 @@ TM-run-table-δ (δ x y x' y' d) = x' , (y' , d)
    * transition function         : TM (1 + n) (1 + m)
 -}
 TM-from-table : {n m : Nat} → List (TM-δ (suc n) (suc m)) → TM (suc n) (suc m)
-TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (List-find match-input table)
+TM-from-table {n} {m} table (x , y) = Maybe-map TM-run-table-δ (find match-input table)
   where
     match-input : TM-δ (suc n) (suc m) → Bool
     match-input (δ x' y' _ _ _) = eq-∧ (eq-Fin {suc n}) (eq-Fin {suc m}) (x , y) (x' , y')

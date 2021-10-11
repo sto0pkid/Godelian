@@ -1,6 +1,7 @@
 module Determinism where
 
 open import Basic hiding (_^_) renaming (func-rep to _^_)
+open import Util.BoolProp
 
 
 {-

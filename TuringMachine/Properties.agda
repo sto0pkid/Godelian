@@ -1,8 +1,11 @@
 module TuringMachine.Properties where
 
-open import Basic renaming (ℕ to Nat ; ℕ-LEM to Nat-LEM)
+open import Basic renaming (ℕ to Nat)
 open import Relation.Binary.PropositionalEquality as PropEq
 open import TuringMachine3 hiding (δ)
+open import Util.Arithmetic renaming (ℕ-LEM to Nat-LEM)
+open import Util.BoolProp
+open import Util.List
 
 TM-state-halted : {n m : Nat} → TM-state (suc n) m → Set
 TM-state-halted state = halted ≡ true

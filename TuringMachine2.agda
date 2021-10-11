@@ -2,6 +2,9 @@ module TuringMachine2 where
 
 open import Basic renaming (ℕ to Nat)
 open import Base2
+open import Util.Arithmetic
+open import Util.Bool
+open import Util.List
 
 {-
   set of states is Fin (n+1)

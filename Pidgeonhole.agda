@@ -1,6 +1,8 @@
 module Pidgeonhole where
 
-open import Basic renaming (Vec-sum to Σ ; Vec-any to ∃ ; Vec-any-monotonic to ∃-monotonic) hiding (Σ)
+open import Basic hiding (Σ)
+open import Util.Arithmetic
+open import Util.Vec renaming (Vec-sum to Σ ; Vec-any to ∃ ; Vec-any-monotonic to ∃-monotonic)
 
 
 {-
